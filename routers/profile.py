@@ -21,5 +21,4 @@ class RaceTrainerList(Resource):
 @api.route ('/races/jockey/<jockey_id>')
 class RaceJockeyList(Resource):
     def get(self, jockey_id):
-        print (jockey_id)
         return profileController.getRaceList ("jockey", jockey_id)

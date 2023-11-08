@@ -40,3 +40,9 @@ class MarketBook(ColManager):
             mb['runners'] = tmp_runners
             tmp.append (mb)
         return tmp
+
+    def getForRace (self, race_obj):
+        mbs = list(self.manager.find({"marketDefinition.eventId": race_obj['event_id'], "runners.selectionId": race_obj['horse_id']}))
+        if mbs is None: return None
+        if len(mbs) == 0: return None
+        return mbs[0]
