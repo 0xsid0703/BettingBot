@@ -2,8 +2,9 @@ import pymongo
 import json
 
 from .event import Event
-from .track import Track
 from .horse import Horse
+from .trainer import Trainer
+from .jockey import Jockey
 from .race import Race
 from .marketBook import MarketBook
 from .marketIds import MarketIds
@@ -28,8 +29,9 @@ class DbManager:
                 self.database = self.client[dbname]
                 dbLogger.info("===   Database Connection successful.   ===")
                 self.eventCol = Event(self.database)
-                self.trackCol = Track(self.database)
                 self.horseCol = Horse(self.database)
+                self.trainerCol = Trainer(self.database)
+                self.jockeyCol = Jockey(self.database)
                 self.raceCol = Race(self.database)
                 self.marketBookCol = MarketBook(self.database)
                 self.marketIdsCol = MarketIds (self.database)
@@ -43,6 +45,5 @@ class DbManager:
     def saveManyEvent(self, eventList):
         eList = self.eventCol.insert_many (eventList)
         return eList
-
 
 dbManager = DbManager()

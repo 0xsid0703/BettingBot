@@ -55,6 +55,9 @@ def daemonSaveXMLData():
     races = buildRaceProfile ()
     for race in races:
         dbManager.raceCol.saveRace (race)
+        dbManager.trainerCol.saveTrainer (race)
+        dbManager.jockeyCol.saveJockey (race)
+        dbManager.horseCol.saveHorse (race)
 
 def main():
     connectDatabase()

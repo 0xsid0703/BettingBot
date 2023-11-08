@@ -89,7 +89,8 @@ class Trading:
                     tmp['eventId'] = int(mc.event.id)
                 if mc.runners is not None:
                     tmpRunners = []
-                    profitAndLoses = self.getMarketProfitAndLoss ([tmp['marketId']])
+                    # profitAndLoses = self.getMarketProfitAndLoss ([tmp['marketId']])
+                    profitAndLoses = None
                     for runner in mc.runners:
                         tmpRunner = {
                             "handicap": runner.handicap if runner.handicap is not None else 0,
@@ -130,6 +131,7 @@ class Trading:
             cc = cc.upper()
             if cc not in [country['Country'] for country in cList]:
                 tradingLogger.error ("Country code: \"%s\" is wrong. Please enter the correct parameters." % cc, exc_info=True)
+                return
             
             mf = self.makeMarketFilter(
                     marketCountries=[cc],

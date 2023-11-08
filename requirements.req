@@ -7,3 +7,4 @@ flask
 flask_restx
 pymongo
 mongoengine
+flask.scaffold

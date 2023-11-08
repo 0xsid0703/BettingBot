@@ -2,6 +2,7 @@ from flask_restx import Api
 
 from .basic import api as basic
 from .profile import api as profile
+from .board import api as board
 
 api = Api(
     title='Horse Racing in Betfair Application',
@@ -12,3 +13,4 @@ api = Api(
 
 api.add_namespace(basic)
 api.add_namespace(profile)
+api.add_namespace(board)

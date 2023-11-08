@@ -39,7 +39,6 @@ def connectDatabase():
 
 def feedStreamData(evt):
 
-    listener = StreamListener(output_queue=output_queue)
     dbManager.marketIdsCol.saveData ([])
 
     # while True:
@@ -52,7 +51,8 @@ def feedStreamData(evt):
     for event in events:
         # tmp = [market['marketId'] if market['marketCatalogueDescription']['marketType'] == "WIN" for market in event['markets']]
         for market in event['markets']:
-            if market['marketCatalogueDescription']['marketType'] == "WIN": marketIds.append (market['marketId'])
+            if market['marketCatalogueDescription']['marketType'] == "WIN" or market['marketCatalogueDescription']['marketType'] == "PLACE": 
+                marketIds.append (market['marketId'])
         # marketIds += tmp
     
     tmpSet = marketIdSet.copy()
@@ -63,23 +63,31 @@ def feedStreamData(evt):
     dbManager.marketIdsCol.saveData (list(marketIdSet))
         
 
-    stream = tradingObj.trading.streaming.create_stream(listener=listener)
-    market_filter = streaming_market_filter(
-        market_ids=list(newMarketIds)
-    )
-    market_data_filter = streaming_market_data_filter(
-        fields=["SP_PROJECTED", "SP_PROJECTED", "EX_MARKET_DEF", "EX_BEST_OFFERS_DISP", "EX_BEST_OFFERS", "EX_ALL_OFFERS", "EX_TRADED", "EX_TRADED_VOL"], ladder_levels=3
-    )
-    try:
-        streaming_unique_id = stream.subscribe_to_markets(
-            market_filter=market_filter,
-            market_data_filter=market_data_filter,
-            conflate_ms=1000,  # send update every 1000ms
+    s = 0; cnt = 10
+    while (s < len(list(marketIdSet))):
+        splitMarketIdSet = list(marketIdSet)[s:min(s + cnt, len(list(marketIdSet)) - 1)]
+
+        listener = StreamListener(output_queue=output_queue)
+        stream = tradingObj.trading.streaming.create_stream(listener=listener)
+        market_filter = streaming_market_filter(
+            market_ids=splitMarketIdSet
         )
-        t = threading.Thread(target=stream.start, daemon=True)
-        t.start()
-    except Exception as e:
-        print (e)
+        market_data_filter = streaming_market_data_filter(
+            fields=["SP_PROJECTED", "SP_PROJECTED", "EX_MARKET_DEF", "EX_BEST_OFFERS_DISP", "EX_BEST_OFFERS", "EX_ALL_OFFERS", "EX_TRADED", "EX_TRADED_VOL"], ladder_levels=3
+        )
+        try:
+            streaming_unique_id = stream.subscribe_to_markets(
+                market_filter=market_filter,
+                market_data_filter=market_data_filter,
+                conflate_ms=1000,  # send update every 1000ms
+            )
+            t = threading.Thread(target=stream.start, daemon=True)
+            t.start()
+        except Exception as e:
+            print (e)
+
+        s += cnt
+        time.sleep (3)
     print ("finished feed......")
     # time.sleep (3600)
 

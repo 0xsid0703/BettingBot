@@ -288,7 +288,7 @@ def buildRaceProfile():
                             tmp['jockey_id'] = int(jockey['id'])
                         if child.tag == 'track':
                             track = child.attrib
-                            tmp['track_name'] = track['name']
+                            tmp['track_name'] = track['name'].upper()
                             tmp['track_id'] = int(track['id'])
                             tmp['track_location'] = track['location']
                             tmp['track_condition'] = track['condition']
