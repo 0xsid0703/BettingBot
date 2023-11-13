@@ -42,4 +42,10 @@ class Horse(ColManager):
         except Exception as e:
             horseLogger.error ("getAllHorses() failed.", exc_info=True)
 
+    def getHorseById(self, id):
+        try:
+            horse = self.manager.find_one ({"id": id})
+            return horse
+        except:
+            return None
     

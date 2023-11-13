@@ -66,3 +66,13 @@ class Event(ColManager):
     def getDocumentsByMarketId(self, market_id):
         events = self.manager.find({"markets.marketId": market_id})
         return list(events)
+    
+    def getTotalMatchedByNum(self, dateObj, trackName):
+        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})
+        
+        if event is None: return 0
+        totalMatched = 0
+        for market in event['markets']:
+            if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
+                totalMatched = market['totalMatched']
+        return float(totalMatched)

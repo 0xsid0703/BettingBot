@@ -143,14 +143,25 @@ def captureMarkets(processList):
         events = tradingObj.getEvents('au', [7])
         winMarkets = []
         placeMarkets = []
+        markets = []
         print ("capture markets started...")
         for event in events:
             # tmp = [market['marketId'] if market['marketCatalogueDescription']['marketType'] == "WIN" for market in event['markets']]
             for market in event['markets']:
-                if market['marketCatalogueDescription']['marketType'] == "WIN":
+                if market['marketCatalogueDescription']['marketType'] == "WIN" or market['marketCatalogueDescription']['marketType'] == "PLACE":
+                    markets.append (market['marketId'])
                     winMarkets.append (market['marketId'])
                 if market['marketCatalogueDescription']['marketType'] == "PLACE":
                     placeMarkets.append (market['marketId'])
+        
+        # i  = 0
+        # while True:
+        #     if i > len(markets): break
+        #     tmp = markets[i:min(i  + 10, len(markets))]
+        #     mbc = MarketBookCather(tmp)
+        #     processList.append (mbc.pid)
+        #     time.sleep (5)
+        #     i += 20
         wm = MarketBookCather(winMarkets)
         pm = MarketBookCather(placeMarkets)
         processList.append (wm.pid)
@@ -159,6 +170,7 @@ def captureMarkets(processList):
         time.sleep (600)
 
 def main():
+    fd = open("./1.txt", "w");fd.write("Stream running");fd.close()
     connectDatabase()
     with multiprocessing.Manager() as manager:
         processList = manager.list()

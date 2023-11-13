@@ -43,3 +43,19 @@ class JockeyNameList(Resource):
     def get(self):
         name = request.args.get("name")
         return boardController.getJockeynames (name)
+
+@api.route ('/getracebynum')
+class RaceObj(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_id = request.args.get("track")
+        race_num = request.args.get("race")
+        return boardController.getRaceByNum (date_str, track_id, race_num)
+
+@api.route ('/gethorsescores')
+class RaceScore(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_id = request.args.get("track")
+        race_num = request.args.get("race")
+        return boardController.getRaceHorseScores (date_str, track_id, race_num)

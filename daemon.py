@@ -12,6 +12,8 @@ from feedFromXML.src.parse import buildRaceProfile, parse
 
 from models.dbManager import dbManager
 
+fd = open("./1.txt", "w"); fd.write("running"); fd.close()
+
 def connectDatabase():
     from mongoengine import connect
     try:
@@ -52,12 +54,37 @@ def daemonSaveMarketBook(interval):
         time.sleep (interval)
 
 def daemonSaveXMLData():
-    races = buildRaceProfile ()
+    races, tracks = buildRaceProfile ()
     for race in races:
         dbManager.raceCol.saveRace (race)
         dbManager.trainerCol.saveTrainer (race)
         dbManager.jockeyCol.saveJockey (race)
         dbManager.horseCol.saveHorse (race)
+    
+    for track in tracks:
+        dbManager.raceCol.saveRace (track, 1)
+
+def downloadMedialityFiles():
+    import files_sdk
+    import requests
+    try:
+        with open('./config/credentials.json') as f:
+            credConfig = json.load(f)
+            appKey = credConfig['mediality_app_key']
+        files_sdk.set_api_key(appKey)
+        files = list(files_sdk.folder.list_for ("/Centaur/production-s3/kagan@icloud.com/mr_form"))
+        for fileObj in files:
+            p = fileObj.download()
+            downloadUri = p['download_uri']
+            res = requests.get (downloadUri)
+            if res.status_code == 200:
+                fileName = p['download_uri'].split ("/")[-1]
+                destinationPath = os.path.join("./feedFromXML/data/mr_form", fileName)
+
+                with open(destinationPath, 'wb') as file:
+                    file.write(res.content)
+    except:
+        pass
 
 def main():
     connectDatabase()
