@@ -42,4 +42,9 @@ class Jockey(ColManager):
         except Exception as e:
             jockeyLogger.error ("getAllJockeys() failed.", exc_info=True)
 
-    
+    def getJockeyById(self, id):
+        try:
+            jockey = self.manager.find_one({"id": id})
+            return jockey
+        except:
+            return None

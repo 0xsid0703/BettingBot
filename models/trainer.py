@@ -41,3 +41,10 @@ class Trainer(ColManager):
             return trainers
         except Exception as e:
             trainerLogger.error ("getAllTrainers() failed.", exc_info=True)
+
+    def getTrainerById(self, id):
+        try:
+            trainer = self.manager.find_one({"id": id})
+            return trainer
+        except:
+            return None

@@ -23,6 +23,13 @@ class BasicController(Controller):
         
         eList = dbManager.eventCol.getDocumentsByDate (betDate, eventTypeIds, countryCode, marketType)
         data = []
+        marketIds = []
+
+        for e in eList:
+            marketIds += [market['marketId'] for market in e['markets']]
+
+        marketBooks = dbManager.marketBookCol.getMarketBooksByIds(marketIds)
+        marketBookWithRunners = {marketBook['marketId']: marketBook['runners'] for marketBook in marketBooks}
         for e in eList:
             if e['eventId'] == 32707774: continue
             e['_id'] = str(e['_id'])
@@ -37,13 +44,17 @@ class BasicController(Controller):
                              "venue": e['eventVenue'],
                              "status":market['marketBook']['status'],
                              "totalMatched": market['totalMatched'],
+                             "runners": marketBookWithRunners[market['marketId']] if market['marketId'] in list(marketBookWithRunners.keys()) else [],
+                             "runnersId": {runner['selectionId']: runner['sortPriority'] for runner in market['runners']}
                             } 
-                            for market in e['markets'] if market["marketCatalogueDescription"]["marketType"] == "WIN"]
+                            for market in e['markets'] if market["marketCatalogueDescription"]["marketType"] == marketType]
             }
+            
             data.append (tmp)
+        
         return {
             "success": True,
-            "data": data
+            "data": data,
         }
 
     '''

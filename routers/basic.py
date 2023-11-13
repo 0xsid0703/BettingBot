@@ -7,10 +7,10 @@ from controllers.basicController import BasicController
 
 basicController = BasicController()
 
-@api.route ('/events/<date>')
+@api.route ('/events/<type>/<date>')
 class EventList(Resource):
-    def get(self, date):
-        return basicController.getEvents (date.strip(), [7], 'AU', "WIN")
+    def get(self, type, date):
+        return basicController.getEvents (date.strip(), [7], 'AU', type)
 
 @api.route ('/events/getrunners/<market_id>')
 class GetRunners(Resource):

@@ -4,7 +4,7 @@ import numpy as np
 
 import sys
 sys.path.append ("..")
-from horse_racing_backend.utils.logging import algoLogger
+from utils.logging import algoLogger
 
 CSV_FILE = "prompts/data/20230911-grafton-r04.csv"
 CSV_FILE = "prompts/data/2.csv"
