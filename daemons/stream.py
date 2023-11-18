@@ -4,7 +4,7 @@ import threading
 import json
 import queue
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from betfairlightweight import StreamListener
 from betfairlightweight.filters import (
     streaming_market_filter,
@@ -65,7 +65,7 @@ class MarketBookCather:
             streaming_unique_id = stream.subscribe_to_markets(
                 market_filter=market_filter,
                 market_data_filter=market_data_filter,
-                conflate_ms=1000,  # send update every 1000ms
+                conflate_ms=2000,  # send update every 1000ms
             )
             t = threading.Thread(target=stream.start, daemon=True)
             t.start()
@@ -77,22 +77,22 @@ class MarketBookCather:
         while True:
             print ("Capture queue data started...")
             marketBooks = output_queue.get()
-            print (marketBooks, ">>> poped")
+            print (len(marketBooks), ">>> poped")
             
             mbs = tradingObj.convertMarketBookToData (marketBooks)
-
             for marketBook in mbs:
                 dbManager.marketBookCol.saveBook (marketBook)
-                for runner in marketBook['runners']:
-                    try:
-                        print(
-                            runner['sp']['actualSp'],
-                            runner['sp']['nearPrice'],
-                            runner['sp']['farPrice'],
-                            marketBook['marketId']
-                        )
-                    except:
-                        pass
+                # for runner in marketBook['runners']:
+                try:
+                    print(
+                        marketBook['runners'][0]['sp']['actualSp'],
+                        marketBook['runners'][0]['sp']['nearPrice'],
+                        marketBook['runners'][0]['sp']['farPrice'],
+                        marketBook['marketId'],
+                        marketBook['version']
+                    )
+                except:
+                    pass
 
 def myKillProcess(processList):
 
@@ -108,66 +108,84 @@ def myKillProcess(processList):
                 print (f"Process with ID {p} not found.")
         time.sleep (600)
 
-def getQueueData(output_queue): 
-    while True:
-        print ("Capture queue data started...")
-        marketBooks = output_queue.get()
-        print (marketBooks, ">>> poped")
+# def getQueueData(output_queue): 
+#     while True:
+#         print ("Capture queue data started...")
+#         marketBooks = output_queue.get()
+#         print (marketBooks, ">>> poped")
         
-        mbs = tradingObj.convertMarketBookToData (marketBooks)
+#         mbs = tradingObj.convertMarketBookToData (marketBooks)
 
-        for marketBook in mbs:
-            dbManager.marketBookCol.saveBook (marketBook)
-            for runner in marketBook['runners']:
-                try:
-                    print(
-                        runner['sp']['actualSp'],
-                        runner['sp']['nearPrice'],
-                        runner['sp']['farPrice'],
-                        marketBook['marketId']
-                    )
-                except:
-                    pass
+#         for marketBook in mbs:
+#             # dbManager.marketBookCol.saveBook (marketBook)
+#             for runner in marketBook['runners']:
+#                 try:
+#                     print(
+#                         runner['sp']['actualSp'],
+#                         runner['sp']['nearPrice'],
+#                         runner['sp']['farPrice'],
+#                         marketBook['marketId']
+#                     )
+#                 except:
+#                     pass
+
+def sortFunc (item):
+    return item[1].timestamp()
 
 def captureMarkets(processList):
     while True:
-        
-        while len(processList) > 0:
-            try:
-                p = processList.pop()
-                print ("Kill process in captureMarkets: %d" % p)
-                os.kill (p, 15)
-            except ProcessLookupError:
-                print (f"Process with ID {p} not found.")
-
         events = tradingObj.getEvents('au', [7])
         winMarkets = []
         placeMarkets = []
-        markets = []
-        print ("capture markets started...")
         for event in events:
             # tmp = [market['marketId'] if market['marketCatalogueDescription']['marketType'] == "WIN" for market in event['markets']]
             for market in event['markets']:
-                if market['marketCatalogueDescription']['marketType'] == "WIN" or market['marketCatalogueDescription']['marketType'] == "PLACE":
-                    markets.append (market['marketId'])
-                    winMarkets.append (market['marketId'])
+                if market['marketCatalogueDescription']['marketType'] == "WIN":
+                    # if (datetime.utcnow() - timedelta(hours=1)) <  market['marketStartTime'] and datetime.utcnow().strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
+                    if (datetime.utcnow() + timedelta(hours=10)).strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
+                        winMarkets.append ([market['marketId'], market['marketStartTime']])
                 if market['marketCatalogueDescription']['marketType'] == "PLACE":
-                    placeMarkets.append (market['marketId'])
-        
-        # i  = 0
-        # while True:
-        #     if i > len(markets): break
-        #     tmp = markets[i:min(i  + 10, len(markets))]
-        #     mbc = MarketBookCather(tmp)
-        #     processList.append (mbc.pid)
-        #     time.sleep (5)
-        #     i += 20
-        wm = MarketBookCather(winMarkets)
-        pm = MarketBookCather(placeMarkets)
-        processList.append (wm.pid)
-        processList.append (pm.pid)
-        print (processList, "processList >>>>")
-        time.sleep (600)
+                    # if (datetime.utcnow() - timedelta(hours=1)) <  market['marketStartTime'] and datetime.utcnow().strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
+                    if (datetime.utcnow() + timedelta(hours=10)).strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
+                        placeMarkets.append ([market['marketId'], market['marketStartTime']])
+        startLoop = datetime.now()
+
+        while True:
+            
+            while len(processList) > 0:
+                try:
+                    p = processList.pop()
+                    print ("Kill process in captureMarkets: %d" % p)
+                    os.kill (p, 15)
+                except ProcessLookupError:
+                    print (f"Process with ID {p} not found.")
+
+            print ("capture markets started...")
+            
+            print (len(winMarkets))
+            if len(winMarkets) == 0 and len(placeMarkets) == 0:
+                time.sleep (3600)
+            else:
+                winMarkets.sort (key=sortFunc)
+                placeMarkets.sort (key=sortFunc)
+                
+                if len(winMarkets) > 0:
+                    wm = MarketBookCather([item[0] for item in winMarkets])
+                    processList.append (wm.pid)
+                if len(placeMarkets) > 0:
+                    pm = MarketBookCather([item[0] for item in placeMarkets])
+                    processList.append (pm.pid)
+                try:
+                    if (winMarkets[0][1] - datetime.now()).total_seconds() > 0:
+                        if (winMarkets[0][1] - datetime.now()).total_seconds() > 3600:
+                            time.sleep (3600)
+                    else:
+                        break
+                    print (processList, "processList >>>>")
+                except:
+                    pass
+            time.sleep (10)
+            if (datetime.now() - startLoop).total_seconds() > 18000: break
 
 def main():
     fd = open("./1.txt", "w");fd.write("Stream running");fd.close()

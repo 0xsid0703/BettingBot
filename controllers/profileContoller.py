@@ -18,9 +18,11 @@ class ProfileController(Controller):
             races = dbManager.raceCol.getRacesByHorse(id)
             rlt  = []
             for race in races:
+                race = dict(race)
                 race['_id'] = str(race['_id'])
-                race['horse_foaling_date'] = race['horse_foaling_date'].strftime("%d/%m/%y")
-                race['date'] = race['date'].strftime("%d/%m/%y")
+                race['horse_foaling_date'] = race['horse_foaling_date'].strftime("%d/%m/%y") if 'horse_foaling_date' in race else ''
+                race['date'] = race['date'].strftime("%d/%m/%y") if 'date' in race else ''
+                race['home_date'] = race['home_date'].strftime("%d/%m/%y") if 'home_date' in race else ''
 
                 rlt.append (race)
             return rlt
@@ -32,6 +34,7 @@ class ProfileController(Controller):
                 race['_id'] = str(race['_id'])
                 race['horse_foaling_date'] = race['horse_foaling_date'].strftime("%d/%m/%y")
                 race['date'] = race['date'].strftime("%d/%m/%y")
+                race['home_date'] = race['home_date'].strftime("%d/%m/%y") if 'home_date' in race else ''
 
                 rlt.append (race)
             return rlt
@@ -43,6 +46,7 @@ class ProfileController(Controller):
                 race['_id'] = str(race['_id'])
                 race['horse_foaling_date'] = race['horse_foaling_date'].strftime("%d/%m/%y")
                 race['date'] = race['date'].strftime("%d/%m/%y")
+                race['home_date'] = race['home_date'].strftime("%d/%m/%y") if 'home_date' in race else ''
 
                 rlt.append (race)
             return rlt

@@ -1,5 +1,5 @@
 from mongoengine import *
-import datetime
+from datetime import datetime, timedelta
 from .colManager import ColManager
 
 import sys
@@ -69,10 +69,38 @@ class Event(ColManager):
     
     def getTotalMatchedByNum(self, dateObj, trackName):
         event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})
-        
-        if event is None: return 0
+        event1 = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj + timedelta(hours = 1) }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})
+
+        if event is None and event1 is None: return 0
+        if event is None and event1 is not None: 
+            event  = event1
+            dateObj += timedelta(hours = 1)
         totalMatched = 0
         for market in event['markets']:
             if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
+                totalMatched = market['totalMatched']
+        return float(totalMatched)
+    
+    def getMarketByNum(self, dateObj, trackName):
+        print (dateObj, "HHHHHHHHHHH")
+        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj })
+        event1 = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj + timedelta(hours = 1) })
+        print (event is None, event1 is None, "PPPPPPPPPPP")
+        if event is None and event1 is None: return None
+        if event is None and event1 is not None: 
+            event  = event1
+            dateObj += timedelta(hours = 1)
+
+        for market in event['markets']:
+            if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
+                return market
+        return None
+    
+    def getTotalMatchedByID(self, marketId):
+        event = self.manager.find_one ({"markets.marketId": marketId }, {"markets.totalMatched": 1, "markets.marketId": 1, "markets.marketCatalogueDescription.marketType": 1})
+        if event is None: return 0
+        totalMatched = 0
+        for market in event['markets']:
+            if market['marketId'] == marketId and market['marketCatalogueDescription']['marketType'] == "WIN":
                 totalMatched = market['totalMatched']
         return float(totalMatched)
