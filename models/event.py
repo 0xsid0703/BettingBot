@@ -40,16 +40,19 @@ class Event(ColManager):
             else:
                 self.manager.insert_one (d)
     
-    def getDocumentsByDate(self, dateStr, eventTypeIds, countryCode, marketType):
-        [minDate, maxDate] = getTimeRangeOfCountry(dateStr, countryCode.upper())
-        events = self.manager.find ({
-            "eventVenue": {"$ne": ""},
-            "countryCode": countryCode.upper(),
-            "markets.marketStartTime": {"$gt": minDate, "$lt": maxDate},
-            "markets.marketCatalogueDescription.marketType": marketType,
-            "markets.marketCatalogueDescription.raceType": {"$ne": "Harness"}
-        })
-        return list(events)
+    def getDocumentsByDate(self, dateStr, eventTypeIds, countryCodeList, marketType):
+        rlt = []
+        for countryCode in countryCodeList:
+            [minDate, maxDate] = getTimeRangeOfCountry(dateStr, countryCode.upper())
+            events = self.manager.find ({
+                "eventVenue": {"$ne": ""},
+                "countryCode": countryCode.upper(),
+                "markets.marketStartTime": {"$gt": minDate, "$lt": maxDate},
+                "markets.marketCatalogueDescription.marketType": marketType,
+                "markets.marketCatalogueDescription.raceType": {"$ne": "Harness"}
+            })
+            rlt += list(events)
+        return rlt
 
     def getDocumentsByFromDate(self, dateStr, eventTypeIds, countryCode):
         [minDate, maxDate] = getTimeRangeOfCountry(dateStr, countryCode.upper())
@@ -67,33 +70,40 @@ class Event(ColManager):
         events = self.manager.find({"markets.marketId": market_id})
         return list(events)
     
-    def getTotalMatchedByNum(self, dateObj, trackName):
-        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})
-        event1 = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj + timedelta(hours = 1) }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})
+    def getTotalMatchedByNum(self, dateObj, trackName, raceNum = 1):
+        # event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})
+        # event1 = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj + timedelta(hours = 1) }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})
+        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}})
 
-        if event is None and event1 is None: return 0
-        if event is None and event1 is not None: 
-            event  = event1
-            dateObj += timedelta(hours = 1)
-        totalMatched = 0
-        for market in event['markets']:
-            if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
-                totalMatched = market['totalMatched']
-        return float(totalMatched)
+        if event is None: return 0
+
+        raceCnt = 0
+        markets = event['markets']
+        markets.sort (key=self.sortFuncMarketStartTime)
+        for market in markets:
+            if market['marketCatalogueDescription']['marketType'] == "WIN":
+            # if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
+                raceCnt += 1
+                if raceCnt == int(raceNum):
+                    return float(market['totalMatched'])
+        return 0
     
-    def getMarketByNum(self, dateObj, trackName):
-        print (dateObj, "HHHHHHHHHHH")
-        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj })
-        event1 = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj + timedelta(hours = 1) })
-        print (event is None, event1 is None, "PPPPPPPPPPP")
-        if event is None and event1 is None: return None
-        if event is None and event1 is not None: 
-            event  = event1
-            dateObj += timedelta(hours = 1)
+    def sortFuncMarketStartTime(self, market):
+        return market['marketStartTime'].timestamp()
 
-        for market in event['markets']:
-            if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
-                return market
+    def getMarketByNum(self, dateObj, trackName, raceNum = 1):
+        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}})
+        if event is None: return None
+
+        raceCnt = 0
+        markets = event['markets']
+        markets.sort (key=self.sortFuncMarketStartTime)
+        for market in markets:
+            # if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
+            if market['marketCatalogueDescription']['marketType'] == "WIN":
+                raceCnt += 1
+                if raceCnt == int(raceNum):
+                    return market
         return None
     
     def getTotalMatchedByID(self, marketId):

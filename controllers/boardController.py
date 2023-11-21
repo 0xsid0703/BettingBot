@@ -10,6 +10,7 @@ from models.dbManager import dbManager
 from utils.JSONEncoder import JSONEncoder
 from utils.constants import *
 from utils.logging import boardControllerLogger
+from utils import getRegularClassStr, getClassPoint
 
 KEY_NAME = {
   "jockey": "jockey_name",
@@ -127,7 +128,7 @@ class BoardController(Controller):
         rawProb = {}
         for key in list(horseScores.keys()):
             rawProb[key] = horseScores[key] / totalScore
-        print (rawProb, ">>>")
+
         totalProb = 0
         try:
             for runner in marketBook['runners']:
@@ -148,18 +149,13 @@ class BoardController(Controller):
 
         if races is None or (races is not None and len(list(races)) == 0):
             return None
-        australiaTz = pytz.timezone('Australia/Sydney')
-        australiaTime = australiaTz.localize(races[0]['start_time'])
-        print (races[0]['start_time'], "MMMMMMMM")
-        gmtTime = australiaTime.astimezone(pytz.utc)
-        totalMatched = dbManager.eventCol.getTotalMatchedByNum(gmtTime, races[0]['main_track_name'])
-        market = dbManager.eventCol.getMarketByNum(gmtTime, races[0]['main_track_name'])
+
+        totalMatched = dbManager.eventCol.getTotalMatchedByNum(datetime.strptime(dateStr, "%Y-%m-%d"), races[0]['main_track_name'], int(raceNum))
+        market = dbManager.eventCol.getMarketByNum(datetime.strptime(dateStr, "%Y-%m-%d"), races[0]['main_track_name'], int(raceNum))
         runners = []; statusRunners = {}
         framedOdds = None
-        print (market is None, "LLLLLLLL")
         if market is not None:
             marketBook = dbManager.marketBookCol.getRecentMarketBookById(market["marketId"])
-            print (marketBook)
             framedOdds = self.getFramedOdds (dateStr, trackName, raceNum, condition, marketBook)
             if marketBook is not None:
                 tmpRunners = []
@@ -176,10 +172,12 @@ class BoardController(Controller):
         for item in races[0]['prizes']:
             if "total_value" in list(item.keys()):
                 totalPrize = item['total_value']
+
         rlt = {
             "totalPrize": totalPrize,
             "totalMatched": totalMatched,
-            "class": races[0]['class'],
+            "class": getClassPoint(getRegularClassStr(races[0]['class'])),
+            "classStr": getRegularClassStr(races[0]['class']),
             "distance": races[0]['distance'],
             "startTime": races[0]['start_time'].strftime("%Y-%m-%d %H, %M:%S"),
         }
@@ -222,7 +220,7 @@ class BoardController(Controller):
                 except:
                     pass
                 try:
-                    if race['class'] == r['class']: sumClass += 1
+                    if getRegularClassStr(race['class']) == getRegularClassStr(r['class']): sumClass += 1
                 except:
                     pass
                 try:
@@ -240,7 +238,7 @@ class BoardController(Controller):
                 except:
                     pass
                 try:
-                    if r['track_id'] == race['track_id']:
+                    if int(r['track_id']) == int(race['main_track_id']):
                         cntTrack += 1
                         sumTrack += float(r['finish_percentage'])
                 except:
@@ -286,7 +284,7 @@ class BoardController(Controller):
                 except:
                     pass
                 cntTrainer += 1
-
+            
             tmpHorse['horse_name'] = race['horse_name'] if 'horse_name' in race else ''
             tmpHorse['horse_barrier'] = race['horse_barrier'] if 'horse_barrier' in race else 0
             tmpHorse['weight'] = race['weight_allocated'] if 'weight_allocated' in race else 0
@@ -308,11 +306,22 @@ class BoardController(Controller):
             tmpHorse['horse_silk'] = race['horse_silk'] if 'horse_silk' in race else ''
             tmpHorse['horse_id'] = race['horse_id']
             tmpHorse['status'] = statusRunners[str(race['tab_no'])] if 'tab_no' in race and str(race['tab_no']) in statusRunners else 'ACTIVE'
-            tmpHorse['gear'] = race['horse_colour']
+            hColor = COLOR_RESP[race['horse_colour']] if race['horse_colour'] in list(COLOR_RESP.keys()) else 'b'
+            tmpHorse['gear'] = hColor
             if 'current_blinker_ind' in race and race['current_blinker_ind'] == 'Y':
-                tmpHorse['gear'] = race['horse_colour'] + "-" + 'B'
+                tmpHorse['gear'] = hColor + "-" + 'B'
             if len(race['gear_change']) > 0 and race['gear_change'][0]['option'] == 'first time' and 'blinkers' in race['gear_change'][0]['gear'].lower():
-                tmpHorse['gear'] = race['horse_colour'] + "-" + 'BF'
+                tmpHorse['gear'] = hColor + "-" + 'BF'
+            if len(race['gear_change']) > 0 and 'cross over nose' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'CONB'
+            if len(race['gear_change']) > 0 and 'ear muffs' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'EM'
+            if len(race['gear_change']) > 0 and 'nose roll' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'NR'
+            if len(race['gear_change']) > 0 and 'pacifier' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'P'
+            if len(race['gear_change']) > 0 and 'winker' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'W'
             
             tmpHorse['framed_odds'] = framedOdds[tmpHorse['horse_name']] if framedOdds is not None and tmpHorse['horse_name'] in framedOdds else 0
             if lastR is not None:
@@ -335,10 +344,7 @@ class BoardController(Controller):
         if races is None or (races is not None and len(list(races)) == 0):
             return None
 
-        australiaTz = pytz.timezone('Australia/Sydney')
-        australiaTime = australiaTz.localize(races[0]['start_time'])
-        gmtTime = australiaTime.astimezone(pytz.utc)
-        market = dbManager.eventCol.getMarketByNum(gmtTime, races[0]['main_track_name'])
+        market = dbManager.eventCol.getMarketByNum(datetime.strptime(dateStr, "%Y-%m-%d"), races[0]['main_track_name'], int(raceNum))
         runners = []
         if market is not None:
             marketBook = dbManager.marketBookCol.getRecentMarketBookById(market["marketId"])

@@ -116,7 +116,7 @@ def sortFunc (item):
 
 def captureMarkets(processList):
     while True:
-        events = tradingObj.getEvents('au', [7])
+        events = tradingObj.getEvents(['au', 'nz', 'sg'], [7])
         winMarkets = []
         placeMarkets = []
         for event in events:

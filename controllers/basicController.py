@@ -14,14 +14,14 @@ class BasicController(Controller):
     def __init__(self):
         super().__init__()
 
-    def getEvents(self, betDate, eventTypeIds, countryCode, marketType):
+    def getEvents(self, betDate, eventTypeIds, countryCodeList, marketType):
         if eventTypeIds is None or len(eventTypeIds) == 0:
             return {
                 "success": False,
                 "msg": "Event type id array parameter should be not empty. Check this parameter again."
             }
         
-        eList = dbManager.eventCol.getDocumentsByDate (betDate, eventTypeIds, countryCode, marketType)
+        eList = dbManager.eventCol.getDocumentsByDate (betDate, eventTypeIds, countryCodeList, marketType)
         data = []
         marketIds = []
         
@@ -36,7 +36,6 @@ class BasicController(Controller):
                             break
 
         marketBooks = dbManager.marketBookCol.getMarketBooksByIds(marketIds)
-        print (marketIds, len(marketBooks))
         marketBookWithRunners = {marketBook['marketId']: marketBook['runners'] for marketBook in marketBooks}
 
         for e in eList:
@@ -48,6 +47,7 @@ class BasicController(Controller):
                 if lastMarket['marketBook']['status'] == 'CLOSED': continue
             tmp = {
                 "venue": e['eventVenue'],
+                "countryCode": e['countryCode'],
                 "markets": [{"startTime": market['marketStartTime'].strftime("%Y-%m-%dT%H:%M:%SZ"),
                              "marketId": market['marketId'],
                              "venue": e['eventVenue'],

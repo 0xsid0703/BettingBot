@@ -6,7 +6,7 @@ from datetime import datetime
 DATA_DIR = "feedFromXML/data"
 FORM_DIR = "mr_form"
 FIELD_DIR = "mr_fields"
-START_DATE="18/11/2023"
+START_DATE="19/11/2023"
 
 def getHorseObj(horse_obj):
     db_obj = horse_obj.attrib

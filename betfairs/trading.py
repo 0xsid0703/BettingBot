@@ -125,16 +125,20 @@ class Trading:
     '''
         cc: country code ====>  e.x   cc: AU
     '''
-    def getEvents(self, cc, eventTypeIds):
+    def getEvents(self, ccList, eventTypeIds):
         try:
             cList = self.getCountries()
-            cc = cc.upper()
-            if cc not in [country['Country'] for country in cList]:
-                tradingLogger.error ("Country code: \"%s\" is wrong. Please enter the correct parameters." % cc, exc_info=True)
-                return
+            countryList = []
+            for cc in ccList:
+                cc = cc.upper()
+                if cc not in [country['Country'] for country in cList]:
+                    tradingLogger.info ("Country code: \"%s\" is wrong. Please enter the correct parameters." % cc)
+                    continue
+                countryList.append (cc)
             
+            if len(countryList) == 0: return []
             mf = self.makeMarketFilter(
-                    marketCountries=[cc],
+                    marketCountries=countryList,
                     eventTypeIds=eventTypeIds,
                     # marketTypeCodes=['WIN']
                 )
@@ -200,7 +204,6 @@ class Trading:
             marketBooks = self.trading.betting.list_market_book (market_ids = marketIds, price_projection={'priceData': ['EX_BEST_OFFERS', 'SP_AVAILABLE', 'SP_TRADED', 'EX_ALL_OFFERS', 'EX_TRADED']})
             return self.convertMarketBookToData (marketBooks)
         except Exception as e:
-            print (e)
             return []
     def convertMarketBookToData (self, marketBooks):
         try:

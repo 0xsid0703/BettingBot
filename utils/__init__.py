@@ -1,6 +1,7 @@
 import pytz
 from datetime import datetime, timedelta, time
 from .logging import utilsLogger
+from .constants import CLASSES
 
 ### timezone = "Australia/Sydney"
 def getTimeOffset(timezone):
@@ -74,3 +75,38 @@ def getTimeRangeOfCountry(dateStr, countryCode):
     end_time_gmt -= timedelta(hours=minOffset)
 
     return [start_time_gmt, end_time_gmt]
+
+def getRegularClassStr(classStr):
+    orgClassStr = classStr
+    classStr = classStr.strip()
+    classStr = classStr.upper()
+    if len(classStr) == 0: return "Class 1"
+
+    if classStr[-1] == "+":
+        orgClassStr = orgClassStr[:-1]
+    if classStr in list(CLASSES.keys()):
+        return classStr
+    if classStr.startswith ('BM'):
+        orgClassStr = "Benchmark " + orgClassStr[2:]
+    elif classStr.startswith ('CLS'):
+        orgClassStr = "Class" + orgClassStr[3:]
+    elif classStr.startswith ('OPEN'):
+        orgClassStr = "Open Handicap"
+    elif classStr.startswith ('MDN'):
+        orgClassStr = "Maiden"
+    elif classStr.startswith ('RESTRICTED'):
+        orgClassStr = "RST" + orgClassStr[10:].strip()
+    elif classStr.startswith ('RS0'):
+        orgClassStr = "RS0" + orgClassStr[3:].strip()
+    elif classStr.startswith ('RS1'):
+        orgClassStr = "RS1" + orgClassStr[3:].strip()
+    elif classStr.startswith ('JUMPER'):
+        orgClassStr = "Jumper Flat"
+    return orgClassStr
+
+def getClassPoint(classStr):
+    classStr = getRegularClassStr(classStr)
+    if classStr in list(CLASSES.keys()):
+        return CLASSES[classStr]
+    else:
+        return 0

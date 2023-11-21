@@ -11,7 +11,7 @@ basicController = BasicController()
 @api.route ('/events/<type>/<date>')
 class EventList(Resource):
     def get(self, type, date):
-        return basicController.getEvents (date.strip(), [7], 'AU', type)
+        return basicController.getEvents (date.strip(), [7], ['AU', 'NZ', 'SG'], type)
 
 @api.route ('/events/getrunners/<market_id>')
 class GetRunners(Resource):
