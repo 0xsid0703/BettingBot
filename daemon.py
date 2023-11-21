@@ -37,13 +37,13 @@ def connectDatabase():
 def daemonSaveEvent(interval, event):
     while True:
         if event.is_set(): break
-        events = tradingObj.getEvents('au', [7])
+        events = tradingObj.getEvents(['au', 'sg', 'nz'], [7])
         dbManager.eventCol.saveList (events)
         time.sleep(interval)
 
 def daemonSaveMarketBook(interval):
     while True:
-        events = dbManager.eventCol.getDocumentsByFromDate (datetime.utcnow().strftime("%Y-%m-%d"), [7], "AU")
+        events = dbManager.eventCol.getDocumentsByDate (datetime.utcnow().strftime("%Y-%m-%d"), [7], ["AU", 'NZ', 'SG'])
         for event in events:
             for market in event['markets']:
                 marketBooks = tradingObj.getMarketBooks ([market['marketId']])

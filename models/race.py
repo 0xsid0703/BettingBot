@@ -26,7 +26,7 @@ class Race(ColManager):
                 cnt = self.manager.count_documents ({"date":race_obj['date'], "main_race_num": race_obj['main_race_num'], "main_track_id": race_obj['main_track_id'], "horse_id": race_obj['horse_id']})
                 if cnt > 0:
                     self.manager.update_many(
-                        {"date":race_obj['date'], "race_num": race_obj['race_num'], "track_id": race_obj['track_id'], "horse_id": race_obj['horse_id']},
+                        {"date":race_obj['date'], "main_race_num": race_obj['main_race_num'], "main_track_id": race_obj['main_track_id'], "horse_id": race_obj['horse_id']},
                         {"$set": race_obj}
                     )
                 else:
@@ -47,8 +47,53 @@ class Race(ColManager):
         return races
     
     def getMainRaceByNum(self, date_obj, track_name, race_num):
-        races = self.manager.find({"main_track_name": track_name, "main_race_num": race_num, "date": date_obj})
+        races = self.manager.find({"main_track_name": {"$regex": track_name}, "main_race_num": race_num, "date": date_obj})
         
         if races is None:
             return None
         return list(races)
+    
+    def getRacesByHorseId(self, date_obj, track_name, race_num, horse_id):
+        match = {}
+        if date_obj is not None:
+            match = {"home_date": date_obj}
+        if track_name is not None:
+            match['home_track_name'] = {"$regex": track_name}
+        if race_num is not None:
+            match['home_race_num'] = race_num
+        if horse_id is not None:
+            match['horse_id'] = horse_id
+        races = self.manager.find(match).sort("date", -1)
+        return list(races)
+    
+    def getRacesByJockeyId(self, date_obj, track_name, race_num, jockey_id):
+        match = {}
+        if date_obj is not None:
+            match = {"home_date": date_obj}
+        if track_name is not None:
+            match['home_track_name'] = {"$regex": track_name}
+        if race_num is not None:
+            match['home_race_num'] = race_num
+        if jockey_id is not None:
+            match['jockey_id'] = jockey_id
+        
+        races = self.manager.find(match).sort("date", -1)
+        return list(races)
+    
+    def getRacesByTrainerId(self, date_obj, track_name, race_num, trainer_id):
+        match = {}
+        if date_obj is not None:
+            match = {"home_date": date_obj}
+        if track_name is not None:
+            match['home_track_name'] = {"$regex": track_name}
+        if race_num is not None:
+            match['home_race_num'] = race_num
+        if trainer_id is not None:
+            match['trainer_id'] = trainer_id
+        
+        races = self.manager.find(match).sort("date", -1)
+        return list(races)
+
+    def removeRaceByDate(self, date_str):
+        self.manager.delete_many ({'date': datetime.datetime.strptime(date_str, "%d/%m/%Y")})
+        self.manager.delete_many ({'home_date': datetime.datetime.strptime(date_str, "%d/%m/%Y")})

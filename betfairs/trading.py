@@ -115,7 +115,7 @@ class Trading:
                     tmp['runners'] = tmpRunners
                 
                 marketBooks = self.getMarketBooks ([tmp['marketId']])
-                tmp['marketBook'] = marketBooks[0]
+                tmp['marketBook'] = marketBooks[0] if len(marketBooks) > 0 else []
                 rlt.append (tmp)
             return rlt
         except Exception as e:
@@ -125,16 +125,20 @@ class Trading:
     '''
         cc: country code ====>  e.x   cc: AU
     '''
-    def getEvents(self, cc, eventTypeIds):
+    def getEvents(self, ccList, eventTypeIds):
         try:
             cList = self.getCountries()
-            cc = cc.upper()
-            if cc not in [country['Country'] for country in cList]:
-                tradingLogger.error ("Country code: \"%s\" is wrong. Please enter the correct parameters." % cc, exc_info=True)
-                return
+            countryList = []
+            for cc in ccList:
+                cc = cc.upper()
+                if cc not in [country['Country'] for country in cList]:
+                    tradingLogger.info ("Country code: \"%s\" is wrong. Please enter the correct parameters." % cc)
+                    continue
+                countryList.append (cc)
             
+            if len(countryList) == 0: return []
             mf = self.makeMarketFilter(
-                    marketCountries=[cc],
+                    marketCountries=countryList,
                     eventTypeIds=eventTypeIds,
                     # marketTypeCodes=['WIN']
                 )
@@ -196,7 +200,8 @@ class Trading:
     def getMarketBooks (self, marketIds):
         try:
             priceFilter = self.getPriceFilter (['EX_BEST_OFFERS', 'SP_AVAILABLE', 'SP_TRADED', 'EX_ALL_OFFERS', 'EX_TRADED'])
-            marketBooks = self.trading.betting.list_market_book (market_ids = marketIds, price_projection=priceFilter)
+            # marketBooks = self.trading.betting.list_market_book (market_ids = marketIds, price_projection=priceFilter)
+            marketBooks = self.trading.betting.list_market_book (market_ids = marketIds, price_projection={'priceData': ['EX_BEST_OFFERS', 'SP_AVAILABLE', 'SP_TRADED', 'EX_ALL_OFFERS', 'EX_TRADED']})
             return self.convertMarketBookToData (marketBooks)
         except Exception as e:
             return []
@@ -221,7 +226,7 @@ class Trading:
                 tmp['status'] = marketBook.status if marketBook.status is not None else ''
                 tmp['totalAvailable'] = marketBook.total_available if marketBook.total_available is not None else 0
                 tmp['totalMatched'] = marketBook.total_matched if marketBook.total_matched is not None else 0
-                tmp['version'] = marketBook.version if marketBook.version is not None else 0
+                tmp['version'] = int(marketBook.version) if marketBook.version is not None else 0
 
                 if marketBook.streaming_update is not None:
                     su = marketBook.streaming_update
@@ -325,6 +330,15 @@ class Trading:
     def getPriceFilter (self, priceData):
         return betfairlightweight.filters.price_projection (
             price_data=priceData,
+            ex_best_offers_overrides=betfairlightweight.filters.ex_best_offers_overrides(
+                best_prices_depth=3, # Number of price levels to return on each side
+                rollup_model='STAKE', # Method to use to roll up available sizes
+                rollup_limit=10, # The maximum number of orders to roll up
+                rollup_liability_threshold=1000, # The threshold of matched orders to include
+                rollup_liability_factor=2 # The multiplication factor to apply to the threshold value
+            ),
+            virtualise=True, # Indicates whether to include virtual prices
+            rollover_stakes=False # Indicates whether to include rollover stakes
         )
     
     def makeMarketFilter(

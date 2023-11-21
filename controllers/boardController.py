@@ -10,6 +10,7 @@ from models.dbManager import dbManager
 from utils.JSONEncoder import JSONEncoder
 from utils.constants import *
 from utils.logging import boardControllerLogger
+from utils import getRegularClassStr, getClassPoint
 
 KEY_NAME = {
   "jockey": "jockey_name",
@@ -119,31 +120,79 @@ class BoardController(Controller):
         rltJockeys.sort ()
         return rltJockeys[0: min(20, len(rltJockeys))]
     
-    def getRaceByNum(self, dateStr, trackName, raceNum):
+    def getFramedOdds(self, dateStr, trackName, raceNum, condition, marketBook):
+        horseScores = self.getRaceHorseScores (dateStr, trackName, raceNum, condition)
+        totalScore = 0
+        for key in list(horseScores.keys()):
+            totalScore += horseScores[key]
+        rawProb = {}
+        for key in list(horseScores.keys()):
+            rawProb[key] = horseScores[key] / totalScore
+
+        totalProb = 0
+        try:
+            for runner in marketBook['runners']:
+                totalProb += 1 / float(runner['ex']['availableToBack'][0]['price']) if len(runner['ex']['availableToBack']) > 0 else 0
+        except:
+            pass
+        
+        adjt_factor = totalProb
+        adjt_prob = {}
+        framedOdds = {}
+        for key in list(rawProb.keys()):
+            adjt_prob[key] = rawProb[key] * adjt_factor
+            framedOdds[key] = 1 / adjt_prob[key] if adjt_prob[key] > 0 else 0
+        return framedOdds
+    
+    def getRaceByNum(self, dateStr, trackName, raceNum, condition):
         races = dbManager.raceCol.getMainRaceByNum(datetime.strptime(dateStr, "%Y-%m-%d"), trackName, raceNum)
+
         if races is None or (races is not None and len(list(races)) == 0):
             return None
-        australiaTz = pytz.timezone('Australia/Sydney')
-        australiaTime = australiaTz.localize(races[0]['start_time'])
-        gmtTime = australiaTime.astimezone(pytz.utc)
-        totalMatched = dbManager.eventCol.getTotalMatchedByNum(gmtTime, races[0]['track_name'])
+
+        totalMatched = dbManager.eventCol.getTotalMatchedByNum(datetime.strptime(dateStr, "%Y-%m-%d"), races[0]['main_track_name'], int(raceNum))
+        market = dbManager.eventCol.getMarketByNum(datetime.strptime(dateStr, "%Y-%m-%d"), races[0]['main_track_name'], int(raceNum))
+        runners = []; statusRunners = {}
+        framedOdds = None
+        if market is not None:
+            marketBook = dbManager.marketBookCol.getRecentMarketBookById(market["marketId"])
+            framedOdds = self.getFramedOdds (dateStr, trackName, raceNum, condition, marketBook)
+            if marketBook is not None:
+                tmpRunners = []
+                for runner in marketBook['runners']:
+                    statusRunners[runner['selectionId']] = runner['status']
+                    if runner['status'].upper() != 'REMOVED': tmpRunners.append(runner['selectionId'])
+                for runner in market['runners']:
+                    if runner['selectionId'] in tmpRunners:
+                        pams = runner['runnerName'].split(" ")
+                        statusRunners[pams[0][:-1]] = statusRunners[runner['selectionId']]
+                        runners.append (int(pams[0][:-1]))
+
         totalPrize = 0
         for item in races[0]['prizes']:
             if "total_value" in list(item.keys()):
                 totalPrize = item['total_value']
+
         rlt = {
             "totalPrize": totalPrize,
             "totalMatched": totalMatched,
-            "class": races[0]['class'],
+            "class": getClassPoint(getRegularClassStr(races[0]['class'])),
+            "classStr": getRegularClassStr(races[0]['class']),
             "distance": races[0]['distance'],
             "startTime": races[0]['start_time'].strftime("%Y-%m-%d %H, %M:%S"),
         }
         horses = []
         for race in races:
             race = dict(race)
+            if len(runners) > 0 and 'tab_no' in race and int(race['tab_no']) not in runners:
+                continue
             tmpHorse = {}
-            horse = dbManager.horseCol.getHorseById (int(race['horse_id']))
-            horse = dict(horse)
+            # horse = dbManager.horseCol.getHorseById (int(race['horse_id']))
+            # horse = dict(horse)
+            horseRaces = dbManager.raceCol.getRacesByHorseId(datetime.strptime(dateStr, "%Y-%m-%d"), trackName, raceNum, int(race['horse_id']))
+            jockeyRaces = dbManager.raceCol.getRacesByJockeyId(None, None, None, int(race['main_jockey_id']))
+            trainerRaces = dbManager.raceCol.getRacesByTrainerId(None, None, None, int(race['main_trainer_id']))
+
             sumFinishPercent = 0
             sumPrize = 0
             sumClass = 0
@@ -153,10 +202,15 @@ class BoardController(Controller):
             sumTrack = 0; cntTrack = 0
             sumTrainer = 0; cntTrainer = 0
             sumJockey = 0; cntJockey = 0
-            sumSettling = 0; sumLast600 = 0; sumSpeed = 0
+            sumSettling = 0; sumSpeed = 0
+            sumLast600 = 0; cntLast600 = 0
             lastR = None; startDate = datetime.strptime("1970/01/01", "%Y/%m/%d")
-            if 'races' not in horse: horse['races'] = []
-            for r in horse['races']:
+            # if 'races' not in horse: horse['races'] = []
+            cnt = 0
+            for r in horseRaces:
+                r = dict (r)
+                if "trial" in r['class'].lower(): continue
+                cnt += 1
                 try:
                     sumFinishPercent += float(r['finish_percentage'])
                 except:
@@ -166,7 +220,7 @@ class BoardController(Controller):
                 except:
                     pass
                 try:
-                    if race['class'] == r['class']: sumClass += 1
+                    if getRegularClassStr(race['class']) == getRegularClassStr(r['class']): sumClass += 1
                 except:
                     pass
                 try:
@@ -174,7 +228,7 @@ class BoardController(Controller):
                 except:
                     pass
                 try:
-                    if r['condition'] == 'Good': sumCondition += 1
+                    if r['track_condition'].startswith(condition[0]): sumCondition += 1
                 except:
                     pass
                 try:
@@ -184,29 +238,19 @@ class BoardController(Controller):
                 except:
                     pass
                 try:
-                    if r['track_id'] == race['track_id']:
+                    if int(r['track_id']) == int(race['main_track_id']):
                         cntTrack += 1
                         sumTrack += float(r['finish_percentage'])
                 except:
                     pass
+                
                 try:
-                    if r['trainer_id'] == race['trainer_id']:
-                        cntTrainer += 1
-                        sumTrainer += float(r['finish_percentage'])
-                except:
-                    pass
-                try:
-                    if r['jockey_id'] == race['jockey_id']:
-                        cntJockey += 1
-                        sumJockey += float(r['finish_percentage'])
-                except:
-                    pass
-                try:
-                    sumSettling += float(r['settling'])
+                    sumSettling += int(r['settling'])
                 except:
                     pass
                 try:
                     sumLast600 += float(r['last_600'])
+                    if 'last_600' in r and r['last_600'] > 0: cntLast600 += 1
                 except:
                     pass
                 try:
@@ -219,35 +263,100 @@ class BoardController(Controller):
                         lastR = r
                 except:
                     pass
+            
+            
+            for r in jockeyRaces:
+                if cntJockey >= 200: break
+                r = dict (r)
+                if "trial" in r['class'].lower(): continue
+                try:
+                    sumJockey += float(r['finish_percentage'])
+                except:
+                    pass
+                cntJockey += 1
+
+            for r in trainerRaces:
+                if cntTrainer >= 200: break
+                r = dict (r)
+                if "trial" in r['class'].lower(): continue
+                try:
+                    sumTrainer += float(r['finish_percentage'])
+                except:
+                    pass
+                cntTrainer += 1
+            
             tmpHorse['horse_name'] = race['horse_name'] if 'horse_name' in race else ''
             tmpHorse['horse_barrier'] = race['horse_barrier'] if 'horse_barrier' in race else 0
-            tmpHorse['weight'] = race['weight_total'] if 'weight_total' in race else 0
-            tmpHorse['class'] = "{:.2f}".format(sumClass * 100/len(horse['races'])) if 'races' in horse and len(horse['races']) > 0 else 0
-            tmpHorse['average'] = "{:.2f}".format(sumPrize/len(horse['races'])) if 'races' in horse and len(horse['races']) > 0 else 0
+            tmpHorse['weight'] = race['weight_allocated'] if 'weight_allocated' in race else 0
+            tmpHorse['class'] = "{:.2f}".format(sumClass * 100/cnt) if cnt > 0 else 0
+            tmpHorse['average'] = "{:.2f}".format(sumPrize/cnt) if cnt > 0 else 0
             tmpHorse['winPercent'] = race['win_percentage'] if 'win_percentage' in race else 0
             tmpHorse['placePercent'] = race['place_percentage'] if 'place_percentage' in race else 0
-            tmpHorse['finishPercent'] = "{:.2f}".format(sumFinish/len(horse['races'])) if 'races' in horse and len(horse['races']) > 0 else 0
-            tmpHorse['condition'] = "{:.2f}".format(sumCondition * 100/len(horse['races'])) if 'races' in horse and len(horse['races']) > 0 else 0
+            tmpHorse['finishPercent'] = "{:.2f}".format(sumFinish/cnt) if cnt > 0 else 0
+            tmpHorse['condition'] = "{:.2f}".format(sumCondition * 100/cnt) if cnt > 0 else 0
             tmpHorse['distance'] = "{:.2f}".format(sumDistance/cntDistance) if cntDistance > 0 else 0
             tmpHorse['track'] = "{:.2f}".format(sumTrack/cntTrack) if cntTrack > 0 else 0
             tmpHorse['trainer'] = "{:.2f}".format(sumTrainer/cntTrainer) if cntTrainer > 0 else 0
             tmpHorse['jockey'] = "{:.2f}".format(sumJockey/cntJockey) if cntJockey > 0 else 0
-            tmpHorse['settling'] = "{:.2f}".format(sumSettling * 100/len(horse['races'])) if cntDistance > 0 else 0
-            tmpHorse['last_600'] = "{:.2f}".format(sumLast600 * 100/len(horse['races'])) if 'races' in horse and len(horse['races']) > 0 else 0
-            tmpHorse['speed'] = "{:.2f}".format(sumSpeed/len(horse['races'])) if 'races' in horse and len(horse['races']) > 0 else 0
-            tmpHorse['starts'] = len(horse['races']) if 'races' in horse else 0
+            tmpHorse['settling'] = "{:.2f}".format(sumSettling/cnt) if cnt > 0 else 0
+            tmpHorse['last_600'] = "{:.2f}".format(sumLast600/cntLast600) if cntLast600 > 0 else 0
+            tmpHorse['speed'] = "{:.2f}".format(sumSpeed/cnt) if cnt > 0 else 0
+            tmpHorse['starts'] = cnt
+            tmpHorse['tab_no'] = race['tab_no']
+            tmpHorse['horse_silk'] = race['horse_silk'] if 'horse_silk' in race else ''
+            tmpHorse['horse_id'] = race['horse_id']
+            tmpHorse['status'] = statusRunners[str(race['tab_no'])] if 'tab_no' in race and str(race['tab_no']) in statusRunners else 'ACTIVE'
+            hColor = COLOR_RESP[race['horse_colour']] if race['horse_colour'] in list(COLOR_RESP.keys()) else 'b'
+            tmpHorse['gear'] = hColor
+            if 'current_blinker_ind' in race and race['current_blinker_ind'] == 'Y':
+                tmpHorse['gear'] = hColor + "-" + 'B'
+            if len(race['gear_change']) > 0 and race['gear_change'][0]['option'] == 'first time' and 'blinkers' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'BF'
+            if len(race['gear_change']) > 0 and 'cross over nose' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'CONB'
+            if len(race['gear_change']) > 0 and 'ear muffs' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'EM'
+            if len(race['gear_change']) > 0 and 'nose roll' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'NR'
+            if len(race['gear_change']) > 0 and 'pacifier' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'P'
+            if len(race['gear_change']) > 0 and 'winker' in race['gear_change'][0]['gear'].lower():
+                tmpHorse['gear'] = hColor + "-" + 'W'
+            
+            tmpHorse['framed_odds'] = framedOdds[tmpHorse['horse_name']] if framedOdds is not None and tmpHorse['horse_name'] in framedOdds else 0
             if lastR is not None:
                 tmpHorse['lastFn'] = lastR['finish_percentage'] if 'finish_percentage' in lastR else 0
                 tmpHorse['lastMgn'] = lastR['margin'] if 'margin' in lastR else 0
+                if 'margin' in lastR:
+                    try:
+                        tmpHorse['lastMgn'] = 0 if int(lastR['finish_percentage']) == 100 else lastR['margin']
+                    except:
+                        tmpHorse['lastMgn'] = -1
+                else:
+                    tmpHorse['lastMgn'] = 0
             horses.append (tmpHorse)
         rlt['horses'] =  horses
         return rlt
     
-    def getRaceHorseScores(self, dateStr, trackName, raceNum):
+    def getRaceHorseScores(self, dateStr, trackName, raceNum, condition="Good"):
         races = dbManager.raceCol.getMainRaceByNum(datetime.strptime(dateStr, "%Y-%m-%d"), trackName, raceNum)
 
         if races is None or (races is not None and len(list(races)) == 0):
             return None
+
+        market = dbManager.eventCol.getMarketByNum(datetime.strptime(dateStr, "%Y-%m-%d"), races[0]['main_track_name'], int(raceNum))
+        runners = []
+        if market is not None:
+            marketBook = dbManager.marketBookCol.getRecentMarketBookById(market["marketId"])
+            if marketBook is not None:
+                tmpRunners = []
+                for runner in marketBook['runners']:
+                    if runner['status'].upper() != 'REMOVED': tmpRunners.append(runner['selectionId'])
+                for runner in market['runners']:
+                    if runner['selectionId'] in tmpRunners:
+                        pams = runner['runnerName'].split(" ")
+                        name = runner['runnerName'][len(pams[0]) + 1:]
+                        runners.append (int(pams[0][:-1]))
         
         def sortFunc(race):
             return race['date'].timestamp()
@@ -255,23 +364,22 @@ class BoardController(Controller):
         data = []
         for race in races:
             race = dict(race)
-            tmpHorse = {}
-            horse = dbManager.horseCol.getHorseById (int(race['horse_id']))
-            horse = dict (horse)
-            if 'races' not in horse: horse['races'] = []
+            if len(runners) > 0 and 'tab_no' in race and int(race['tab_no']) not in runners:
+                continue
+            # horse = dbManager.horseCol.getHorseById (int(race['horse_id']))
+            horseRaces = dbManager.raceCol.getRacesByHorseId(datetime.strptime(dateStr, "%Y-%m-%d"), trackName, raceNum, int(race['horse_id']))
+            # horse = dict (horse)
+            # if 'races' not in horse: horse['races'] = []
             careerRuns = 0; careerWins = 0; careerPlaces = 0
             sumPrize = 0
             thisTrackRuns = 0; thisTrackWins = 0; thisTrackPlaces = 0
             thisDistanceRuns = 0; thisDistanceWins = 0; thisDistancePlaces = 0
             thisCondRuns = 0; thisCondWins = 0; thisCondPlaces = 0
             lastR = None; startDate = datetime.strptime("1970/01/01", "%Y/%m/%d")
-
-            if 'races' not in horse: horse['races'] = []
-            for r in list(horse['races']):
+            # if 'races' not in horse: horse['races'] = []
+            for r in horseRaces:
                 r = dict (r)
-                if r['home_id_name'] != race['main_track_id']: continue
-                if r['home_race_id'] != race['main_race_id']: continue
-                # if r['date'] != race['date']: continue
+                
                 if "trial" in r['class'].lower(): continue
 
                 careerRuns += 1
@@ -279,7 +387,7 @@ class BoardController(Controller):
                 if int(r['finish_number']) < 4: careerPlaces += 1
                 if 'horse_prizemoney' in r: sumPrize += r['horse_prizemoney']
                 if 'horse_prizemoney_bonus' in r: sumPrize += r['horse_prizemoney_bonus']
-                if int(r['track_id']) == int(r['home_id_name']):
+                if ('home_id_name' in r and int(r['track_id']) == int(r['home_id_name'])) or ('home_track_id' in r and int(r['track_id']) == int(r['home_track_id'])):
                     thisTrackRuns += 1
                     if int(r['finish_number']) == 1: thisTrackWins += 1
                     if int(r['finish_number']) < 4: thisTrackPlaces += 1
@@ -287,7 +395,7 @@ class BoardController(Controller):
                     thisDistanceRuns += 1
                     if int(r['finish_number']) == 1: thisDistanceWins += 1
                     if int(r['finish_number']) < 4: thisDistancePlaces += 1
-                if 'home_track_condition' in r and 'track_condition' in r and r['track_condition'].upper().startswith(r['home_track_condition'][0].upper()):
+                if 'track_condition' in r and condition.upper() == r['track_condition'].upper():
                     thisCondRuns += 1
                     if int(r['finish_number']) == 1: thisCondWins += 1
                     if int(r['finish_number']) < 4: thisCondPlaces += 1
@@ -297,7 +405,6 @@ class BoardController(Controller):
                         lastR = r
                 except:
                     pass
-            
             careerStrikeRate = careerWins * 100 / careerRuns if careerRuns > 0 else 0
             careerStrikePlaceRate = careerPlaces * 100 / careerRuns if careerRuns > 0 else 0
             averagePrize = sumPrize / careerRuns if careerRuns > 0 else 0
@@ -313,39 +420,39 @@ class BoardController(Controller):
             trainer = dbManager.trainerCol.getTrainerById (int(race['main_trainer_id']))
             trainer = dict (trainer)
             if 'races' in trainer:
-                races = []
-                lastWins = 0; lastPlaces = 0
-                # trainer['races'].sort(key=sortFunc)
+                lastWins = 0; lastPlaces = 0; cnt = 0
+                trainer['races'].sort(key=sortFunc, reverse=True)
                 for trace in trainer['races']:
+                    if cnt > 99: break
                     if "trial" in trace['class'].lower(): continue
-                    races.append (trace)
+                    cnt += 1
                     if int(trace['finish_number']) == 1: lastWins += 1
                     if int(trace['finish_number']) < 4: lastPlaces += 1
-                trainerLast100StrikeRate = lastWins * 100 / min(100, len(races))
-                trainerLast100StrikePlaceRate = lastPlaces * 100 / min(100, len(races))
+                trainerLast100StrikeRate = lastWins * 100 / min(100, cnt)
+                trainerLast100StrikePlaceRate = lastPlaces * 100 / min(100, cnt)
             jockey = dbManager.jockeyCol.getJockeyById (int(race['main_jockey_id']))
             jockey = dict (jockey)
             if 'races' in jockey:
-                races = []
-                lastWins = 0; lastPlaces = 0
-                # jockey['races'].sort(key=sortFunc)
+                lastWins = 0; lastPlaces = 0; cnt = 0
+                jockey['races'].sort(key=sortFunc, reverse=True)
                 for jrace in jockey['races']:
+                    if cnt > 99: break
                     if "trial" in jrace['class'].lower(): continue
-                    races.append (jrace)
+                    cnt += 1
                     if int(jrace['finish_number']) == 1: lastWins += 1
                     if int(jrace['finish_number']) < 4: lastPlaces += 1
-                jockeyLast100StrikeRate = lastWins * 100 / min(100, len(races))
-                jockeyLast100StrikePlaceRate = lastPlaces * 100 / min(100, len(races))
+                jockeyLast100StrikeRate = lastWins * 100 / min(100, cnt)
+                jockeyLast100StrikePlaceRate = lastPlaces * 100 / min(100, cnt)
             
             barrier = int(race['horse_barrier']) if 'horse_barrier' in race else 0
             weightCarried = float(race['weight_total']) if 'weight_total' in race else 0
-            lastFn = int(lastR['finish_number']) if lastR is not None else -1
-            lastMgn = float(lastR['margin']) if lastR is not None else -1
+            lastFn = int(lastR['finish_number']) if lastR is not None else 0
+            lastMgn = float(lastR['margin']) if lastR is not None else 0
 
             data.append ([race['horse_name'], careerStrikeRate, careerStrikePlaceRate, averagePrize, thisTrackStrikeRate, thisTrackStrikePlaceRate, 
                             thisDistanceStrikeRate, thisDistanceStrikePlaceRate, thisCondStrikeRate, thisCondStrikePlaceRate,
                             jockeyLast100StrikeRate, jockeyLast100StrikePlaceRate, trainerLast100StrikeRate, trainerLast100StrikePlaceRate,
-                            barrier, weightCarried, lastFn, lastMgn])
+                            weightCarried, barrier, lastFn, lastMgn])
         
         data = pd.DataFrame(data, columns=['Horse Name', 'Career Strike Rate', 'Career Place Strike Rate', 'Average Prize Money', 'This Track Strike Rate', 'This Track Place Strike Rate',
                                         'This Distance Strike Rate', 'This Distance Place Strike Rate', 'This Condition Strike Rate','This Condition Place Strike Rate',
@@ -399,4 +506,4 @@ class BoardController(Controller):
 
         # Sorting the horses based on their composite scores
         ranked_horses = data[['Horse Name', 'Composite Score']].sort_values(by='Composite Score', ascending=False).reset_index(drop=True)
-        return ranked_horses.set_index('Horse Name')['Composite Score'].to_dict()
+        return data.set_index('Horse Name')['Composite Score'].to_dict()

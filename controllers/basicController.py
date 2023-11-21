@@ -14,22 +14,30 @@ class BasicController(Controller):
     def __init__(self):
         super().__init__()
 
-    def getEvents(self, betDate, eventTypeIds, countryCode, marketType):
+    def getEvents(self, betDate, eventTypeIds, countryCodeList, marketType):
         if eventTypeIds is None or len(eventTypeIds) == 0:
             return {
                 "success": False,
                 "msg": "Event type id array parameter should be not empty. Check this parameter again."
             }
         
-        eList = dbManager.eventCol.getDocumentsByDate (betDate, eventTypeIds, countryCode, marketType)
+        eList = dbManager.eventCol.getDocumentsByDate (betDate, eventTypeIds, countryCodeList, marketType)
         data = []
         marketIds = []
-
+        
+        mapWinToPlace = {}
         for e in eList:
-            marketIds += [market['marketId'] for market in e['markets']]
+            marketIds += [market['marketId'] for market in e['markets'] if market["marketCatalogueDescription"]['marketType'] == "PLACE"]
+            for winMarket in e['markets']:
+                if winMarket["marketCatalogueDescription"]['marketType'] == "WIN":
+                    for placeMarket in e['markets']:
+                        if placeMarket["marketCatalogueDescription"]['marketType'] == "PLACE" and winMarket['marketStartTime'] == placeMarket['marketStartTime']:
+                            mapWinToPlace[winMarket['marketId']] = placeMarket['marketId']
+                            break
 
         marketBooks = dbManager.marketBookCol.getMarketBooksByIds(marketIds)
         marketBookWithRunners = {marketBook['marketId']: marketBook['runners'] for marketBook in marketBooks}
+
         for e in eList:
             if e['eventId'] == 32707774: continue
             e['_id'] = str(e['_id'])
@@ -39,19 +47,19 @@ class BasicController(Controller):
                 if lastMarket['marketBook']['status'] == 'CLOSED': continue
             tmp = {
                 "venue": e['eventVenue'],
+                "countryCode": e['countryCode'],
                 "markets": [{"startTime": market['marketStartTime'].strftime("%Y-%m-%dT%H:%M:%SZ"),
                              "marketId": market['marketId'],
                              "venue": e['eventVenue'],
-                             "status":market['marketBook']['status'],
+                             "status":market['marketBook']['status'] if 'marketBook' in market and 'status' in market['marketBook'] else 'CLOSED',
                              "totalMatched": market['totalMatched'],
-                             "runners": marketBookWithRunners[market['marketId']] if market['marketId'] in list(marketBookWithRunners.keys()) else [],
+                             "runners": marketBookWithRunners[mapWinToPlace[market['marketId']]] if mapWinToPlace[market['marketId']] in marketBookWithRunners and market['marketId'] in mapWinToPlace else [],
                              "runnersId": {runner['selectionId']: runner['sortPriority'] for runner in market['runners']}
                             } 
                             for market in e['markets'] if market["marketCatalogueDescription"]["marketType"] == marketType]
             }
             
             data.append (tmp)
-        
         return {
             "success": True,
             "data": data,
@@ -71,18 +79,25 @@ class BasicController(Controller):
                 }
             if req == 0 or req == 1:
                 marketBook = dbManager.marketBookCol.getDocumentsByID (market_id)
+                totalMatched = dbManager.eventCol.getTotalMatchedByID(market_id)
 
                 if len(marketBook)==0:
                     return {
                         "success": False, 
                         "msg": "No market book data with this market id: %s." % market_id
                     }
+                
+                marketPercent = 0
+                for runner in marketBook[0]['runners']:
+                    marketPercent += 1 / float(runner['ex']['availableToBack'][0]['price'])
+                
                 if req == 0:
                     return {
                         "success": True,
                         "data": {
-                            "totalMatched": marketBook[0]['totalMatched'],
-                            "totalAvailable": marketBook[0]['totalAvailable'],
+                            "totalMatched": totalMatched,
+                            "marketPercent": marketPercent * 100,
+                            # "totalAvailable": marketBook[0]['totalAvailable'],
                             "runnerLen": len(list(marketBook[0]['runners']))
                         }
                     }
@@ -134,7 +149,7 @@ class BasicController(Controller):
             for runner in rlt_market['runners']:
                 metadata = runner['metadata']
                 market_book = self.getMarketBookById (market_id, 1)
-                market_book_sp = self.getMarketBookById (market_id, 2, {"runners.sp.actualSp": {"$gt": 0}})
+                market_book_sp = self.getMarketBookById (market_id, 2, {"status": "CLOSED"})
                 betfair_odds = 0
                 status = ''
                 if market_book is not None and market_book['inplay'] == False:
@@ -192,3 +207,6 @@ class BasicController(Controller):
             for market in event['markets']:
                 bankRoll += market['totalMatched']
         return bankRoll
+    
+    def getMarketbooksWinners(self, date, type):
+        pass

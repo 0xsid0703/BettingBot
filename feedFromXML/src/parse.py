@@ -6,6 +6,7 @@ from datetime import datetime
 DATA_DIR = "feedFromXML/data"
 FORM_DIR = "mr_form"
 FIELD_DIR = "mr_fields"
+START_DATE="19/11/2023"
 
 def getHorseObj(horse_obj):
     db_obj = horse_obj.attrib
@@ -201,6 +202,9 @@ def buildRaceProfile():
         homeTrackAttrib = homeTrack.attrib
 
         dateObj = root.find("date")
+        trackDate = datetime.strptime(dateObj.text, "%d/%m/%Y")
+        if START_DATE is not None and trackDate < datetime.strptime(START_DATE, "%d/%m/%Y"): continue
+        print (trackDate)
 
         races = root.find("races")
         if races is None: continue
@@ -295,13 +299,14 @@ def buildRaceProfile():
                 # horseFf5Wet = horse.find ("FF5_wet")
                 # horseFfDryRating100 = horse.find ("FF_Dry_Rating_100")
                 # horseFfWetRating100 = horse.find ("FF_Wet_Rating_100")
-                # horseCurrentBlinkerInd = horse.find ("current_blinker_ind")
+                horseCurrentBlinkerInd = horse.find ("current_blinker_ind")
                 # horseWinDistances = horse.find ("win_distances")
-                # horseRunningGear = horse.find ("running_gear")
+                horseRunningGear = horse.find ("running_gear")
+                horseGearChanges = horse.find ("gear_changes")
                 # horseFormComments = horse.find ("form_comments")
                 horseWeight = horse.find ("weight")
                 horseWeightAttrib = horseWeight.attrib if horseWeight is not None else None
-                # horseTabNo = horse.find ("tab_no")
+                horseTabNo = horse.find ("tab_no")
                 horseBarrier = horse.find ("barrier")
                 horseSilk = horse.find ("horse_colours_image")
                 # horseMarket = horse.find ("market")
@@ -337,9 +342,21 @@ def buildRaceProfile():
                 tmpRace['main_jockey_id'] = int(jockeyAttrib['id']) if 'id' in jockeyAttrib else -1
                 tmpRace['main_jockey_riding_weight'] = float(jockeyAttrib['riding_weight']) if 'riding_weight' in jockeyAttrib and  len(jockeyAttrib['riding_weight'].strip()) > 0 else -1
                 tmpRace['main_jockey_apprentice_indicator'] = jockeyAttrib['apprentice_indicator'] if 'apprentice_indicator' in jockeyAttrib else ''
+                tmpRace['main_jockey_allowance_weight'] = float(jockeyAttrib['allowance_weight']) if 'allowance_weight' in jockeyAttrib else 0
+
 
                 tmpRace['win_percentage'] = float(win_p.text) if win_p is not None else 0
                 tmpRace['place_percentage'] = float(place_p.text) if place_p is not None else 0
+                tmpRace['tab_no'] = int(horseTabNo.text) if horseTabNo is not None else 0
+                tmpRace['current_blinker_ind'] = horseCurrentBlinkerInd.text if horseCurrentBlinkerInd is not None else 'N'
+
+                tmpRace['gear_change'] = []
+                for gearChange in horseGearChanges:
+                    tmpRace['gear_change'].append (gearChange.attrib)
+                
+                tmpRace['running_gear'] = []
+                for gearItem in horseRunningGear:
+                    tmpRace['running_gear'].append (gearItem.text)
 
                 # tmpHorse['prize_money'] = horsePrizeMoney.text if horsePrizeMoney is not None else 0
                 # tmpHorse['last_four_starts'] = horseLastFourStarts.text if horseLastFourStarts is not None else ''
@@ -359,13 +376,10 @@ def buildRaceProfile():
                 # tmpHorse['horse_price_decimal'] = horseMarketAttrib['price_decimal'] if horseMarketAttrib is not None else 0
                 # tmpHorse['horse_tab_no'] = horseTabNo.text if horseTabNo is not None else 0
                 tmpRace['horse_barrier'] = horseBarrier.text if horseBarrier is not None else 0
-                tmpRace['horse_silk'] = horseSilk.text if horseSilk is not None else 0
+                tmpRace['horse_silk'] = horseSilk.text if horseSilk is not None else ''
                 # tmpHorse['win_distances'] = []
                 # for win_distance in horseWinDistances:
                 #     tmpHorse['win_distances'].append ({"distance": win_distance.attrib['distance'], "wins": win_distance.attrib['wins']})
-                # tmpHorse['running_gear'] = []
-                # for gearItem in horseRunningGear:
-                #     tmpHorse['running_gear'].append (gearItem.text)
                 # tmpHorses.append (tmpHorse)
                 btracks.append (tmpRace)
 
@@ -384,7 +398,7 @@ def buildRaceProfile():
                     tmp['horse_foaling_date'] = datetime.strptime(horseAttrib['foaling_date'], "%d/%m/%Y") if 'foaling_date' in horseAttrib else None
 
                     tmp['home_track_name'] = homeTrackAttrib['name'] if 'name' in homeTrackAttrib else ''
-                    tmp['home_id_name'] = homeTrackAttrib['id'] if 'id' in homeTrackAttrib else ''
+                    tmp['home_track_id'] = homeTrackAttrib['id'] if 'id' in homeTrackAttrib else ''
                     tmp['home_track_surface'] = homeTrackAttrib['track_surface'] if 'track_surface' in homeTrackAttrib else ''
                     tmp['home_track_3char_abbrev'] = homeTrackAttrib['track_3char_abbrev'] if 'track_3char_abbrev' in homeTrackAttrib else ''
                     tmp['home_track_condition'] = homeTrackAttrib['expected_condition'] if 'expected_condition' in homeTrackAttrib else ''
@@ -421,6 +435,8 @@ def buildRaceProfile():
 
                     tmp['win_percentage'] = float(win_p.text) if win_p is not None else -1
                     tmp['place_percentage'] = float(place_p.text) if place_p is not None else -1
+
+                    tmp['current_blinker_ind'] = horseCurrentBlinkerInd.text if horseCurrentBlinkerInd is not None else 'N'
 
                     if form.getchildren() is None: continue
                     for child in form.getchildren():

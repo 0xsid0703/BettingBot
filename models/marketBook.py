@@ -14,14 +14,14 @@ class MarketBook(ColManager):
         self.manager.insert_one (mb)
     
     def saveBook(self, mb):
-        if mb['publishTime'] is None or mb['publishTime'] == '': return
+        if mb['publishTime'] is None or mb['version'] == '': return
         try:
-            count = self.manager.count_documents ({'marketId': mb['marketId'], 'publishTime': mb['publishTime']})
+            count = self.manager.count_documents ({'marketId': mb['marketId'], 'status': 'REMOVED'})
+            if count > 1:
+                return
+            count = self.manager.count_documents ({'marketId': mb['marketId'], 'version': mb['version']})
             if count > 0:
-                self.manager.update_one(
-                    {'marketId': mb['marketId'], 'publishTime': mb['publishTime']},
-                    {"$set": mb}
-                )
+                return
             else:
                 self.manager.insert_one (mb)
         except:
@@ -29,7 +29,7 @@ class MarketBook(ColManager):
     
     def getDocumentsByID(self, market_id, match={}):
         match['marketId'] = market_id
-        mbs = list(self.manager.find(match).sort("publishTime", -1))
+        mbs = list(self.manager.find(match).sort("version", -1))
         if len(mbs) == 0: return []
         tmp = []
         for mb in mbs:
@@ -46,7 +46,7 @@ class MarketBook(ColManager):
             {
                 "$match": {
                     "marketId": { "$in": marketIds },
-                    "runners.sp.actualSp": { "$ne": 0 },
+                    "status": "CLOSED",
                     "runners.status": "WINNER"
                 }
             },
@@ -61,7 +61,7 @@ class MarketBook(ColManager):
         # mbs = self.manager.find({"marketId": {"$in": marketIds}, "runners.sp.actualSp": {"$ne": 0}})
         try:
             mbs = list(mbs)
-            print (len(mbs))
+
             if len(mbs) == 0: return []
             tmp = []
             for mb in mbs:
@@ -77,6 +77,12 @@ class MarketBook(ColManager):
 
     def getForRace (self, race_obj):
         mbs = list(self.manager.find({"marketDefinition.eventId": race_obj['event_id'], "runners.selectionId": race_obj['horse_id']}))
+        if mbs is None: return None
+        if len(mbs) == 0: return None
+        return mbs[0]
+    
+    def getRecentMarketBookById(self, marketId):
+        mbs = list(self.manager.find({"marketId": marketId}).sort("version", -1))
         if mbs is None: return None
         if len(mbs) == 0: return None
         return mbs[0]
