@@ -14,10 +14,18 @@ class Race(ColManager):
     def saveRace(self, race_obj, type = 0):
         try:
             if type == 0:
-                cnt = self.manager.count_documents ({"date":race_obj['date'], "race_num": race_obj['race_num'], "track_id": race_obj['track_id'], "horse_id": race_obj['horse_id']})
+                cnt = self.manager.count_documents ({
+                    "home_date":race_obj['home_date'],
+                    "home_race_num":race_obj['home_race_num'],
+                    "date": race_obj['date'],
+                    "race_num": race_obj['race_num'],
+                    "track_id": race_obj['track_id'],
+                    "horse_id": race_obj['horse_id']
+                })
+                print (race_obj['home_date'], race_obj['home_race_num'], race_obj['horse_id'], race_obj['horse_name'], cnt)
                 if cnt > 0:
                     self.manager.update_one(
-                        {"date":race_obj['date'], "race_num": race_obj['race_num'], "track_id": race_obj['track_id'], "horse_id": race_obj['horse_id']},
+                        {"home_date":race_obj['home_date'], "home_race_num":race_obj['home_race_num'], "date":race_obj['date'], "race_num": race_obj['race_num'], "track_id": race_obj['track_id'], "horse_id": race_obj['horse_id']},
                         {"$set": race_obj}
                     )
                 else:
@@ -35,7 +43,7 @@ class Race(ColManager):
             raceLogger.error ("saveRace() failed.", exc_info=True)
     
     def getRacesByHorse(self, horse_id):
-        races = list(self.manager.find({"horse_id": int(horse_id), "settling": {"$gt": 0}}).sort("date", -1))
+        races = list(self.manager.find({"horse_id": {"$in": [int(horse_id), str(horse_id)]}, "settling": {"$gt": 0}}).sort("date", -1))
         return races
 
     def getRacesByTrainer(self, trainer_id):
@@ -47,7 +55,12 @@ class Race(ColManager):
         return races
     
     def getMainRaceByNum(self, date_obj, track_name, race_num):
-        races = self.manager.find({"main_track_name": {"$regex": track_name}, "main_race_num": race_num, "date": date_obj})
+        print (date_obj, track_name, race_num, "FFF")
+        races = self.manager.find({
+            "main_track_name": {"$regex": track_name},
+            "main_race_num": {"$in": [int(race_num), str(race_num)]},
+            "date": date_obj
+        })
         
         if races is None:
             return None
@@ -60,9 +73,9 @@ class Race(ColManager):
         if track_name is not None:
             match['home_track_name'] = {"$regex": track_name}
         if race_num is not None:
-            match['home_race_num'] = race_num
+            match['home_race_num'] = {"$in": [int(race_num), str(race_num)]}
         if horse_id is not None:
-            match['horse_id'] = horse_id
+            match['horse_id'] = {"$in": [int(horse_id), str(horse_id)]}
         races = self.manager.find(match).sort("date", -1)
         return list(races)
     

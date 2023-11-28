@@ -1,5 +1,5 @@
 from mongoengine import *
-import datetime
+from datetime import timedelta
 from .colManager import ColManager
 
 import sys
@@ -14,22 +14,34 @@ class MarketBook(ColManager):
         self.manager.insert_one (mb)
     
     def saveBook(self, mb):
-        if mb['publishTime'] is None or mb['version'] == '': return
+        if mb['publishTime'] is None or mb['publishTime'] == '': return
         try:
             count = self.manager.count_documents ({'marketId': mb['marketId'], 'status': 'REMOVED'})
             if count > 1:
                 return
-            count = self.manager.count_documents ({'marketId': mb['marketId'], 'version': mb['version']})
-            if count > 0:
-                return
-            else:
+            mbs = list(self.manager.find({'marketId': mb['marketId']}).sort("publishTime", -1))
+            if len(mbs) == 0:
                 self.manager.insert_one (mb)
+                return
+            sp = {}
+            for runner in mb['runners']:
+                sp[runner['selectionId']] = runner['sp']['nearPrice'] if 'nearPrice' in runner['sp'] else -1
+            for runner in mbs[0]['runners']:
+                print (sp[runner['selectionId']] != runner['sp']['nearPrice'], runner['sp']['nearPrice'], sp[runner['selectionId']])
+                if 'nearPrice' in runner['sp'] and sp[runner['selectionId']] != runner['sp']['nearPrice']:
+                    self.manager.insert_one (mb)
+                    return
+            # count = self.manager.count_documents ({'marketId': mb['marketId'], 'publishTime': mb['publishTime']})
+            # if count > 0:
+            #     return
+            # else:
+            #     self.manager.insert_one (mb)
         except:
             marketBookLogger.error ("saveBook() call failed", exc_info=True)
     
     def getDocumentsByID(self, market_id, match={}):
         match['marketId'] = market_id
-        mbs = list(self.manager.find(match).sort("version", -1))
+        mbs = list(self.manager.find(match).sort("publishTime", -1))
         if len(mbs) == 0: return []
         tmp = []
         for mb in mbs:
@@ -68,6 +80,7 @@ class MarketBook(ColManager):
                 tmp_runners = []
                 for runner in mb['runners'][0]:
                     if runner['status'] == 'ACTIVE' or runner['status'] == 'WINNER' or runner['status'] == 'LOSER':
+                        runner['removalDate'] = runner['removalDate'].strftime("%Y-%m-%d %H:%M:%S") if 'removalDate' in runner and runner['removalDate'] is not None else ''
                         tmp_runners.append (runner)
                 mb['runners'] = tmp_runners
                 tmp.append (mb)
@@ -82,7 +95,14 @@ class MarketBook(ColManager):
         return mbs[0]
     
     def getRecentMarketBookById(self, marketId):
-        mbs = list(self.manager.find({"marketId": marketId}).sort("version", -1))
+        mbs = list(self.manager.find({"marketId": marketId}).sort("publishTime", -1))
         if mbs is None: return None
         if len(mbs) == 0: return None
         return mbs[0]
+    
+    def getMarketBookByIdBefore(self, dateObj, marketId):
+        mbsIn10 = list(self.manager.find({"marketId": marketId, "publishTime": {"$lte": dateObj - timedelta(minutes=10)}}).sort("publishTime", -1))
+        mbsIn5 = list(self.manager.find({"marketId": marketId, "publishTime": {"$lte": dateObj - timedelta(minutes=5)}}).sort("publishTime", -1))
+        if mbsIn10 is None: return None, None
+        if len(mbsIn10) == 0: return None, None
+        return mbsIn10[0], mbsIn5[0]

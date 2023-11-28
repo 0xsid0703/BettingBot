@@ -1,7 +1,7 @@
 from mongoengine import *
 from datetime import datetime, timedelta
 from .colManager import ColManager
-
+import re
 import sys
 sys.path.append ("..")
 from utils.logging import eventLogger
@@ -13,6 +13,12 @@ class Event(ColManager):
     
     def saveList(self, dList):
         for d in dList:
+            markets = d['markets']
+            markets.sort (key=self.sortFuncMarketStartTime)
+            lastMarket = markets[-1]
+            if lastMarket['marketStartTime'] > datetime.now():
+                if lastMarket['marketBook']['status'] == 'CLOSED': continue
+
             eventCount = self.manager.count_documents ({"eventId": d["eventId"]})
             if (eventCount > 0):
                 updateObj = {}
@@ -92,11 +98,14 @@ class Event(ColManager):
         return market['marketStartTime'].timestamp()
 
     def getMarketByNum(self, dateObj, trackName, raceNum = 1):
-        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}})
+        pipeline = [
+            {"$match": {"$expr": {"$regexMatch": {"input": trackName, "regex": "$eventVenue"}}, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}}}
+        ]
+        event = self.manager.aggregate (pipeline)
+        # event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}})
         if event is None: return None
-
         raceCnt = 0
-        markets = event['markets']
+        markets = list(event)[0]['markets']
         markets.sort (key=self.sortFuncMarketStartTime)
         for market in markets:
             # if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":

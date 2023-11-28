@@ -53,6 +53,24 @@ class RaceObj(Resource):
         condition = request.args.get("condition")
         return boardController.getRaceByNum (date_str, track_id, race_num, condition)
 
+@api.route ('/getracecardbynum')
+class RaceCardObj(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_id = request.args.get("track")
+        race_num = request.args.get("race")
+        condition = request.args.get("condition")
+        return boardController.getRaceCardByNum (date_str, track_id, race_num, condition)
+
+@api.route ('/getraceformbynum')
+class RaceFormObj(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_id = request.args.get("track")
+        race_num = request.args.get("race")
+        condition = request.args.get("condition")
+        return boardController.getRaceFormByNum (date_str, track_id, race_num, condition)
+
 @api.route ('/gethorsescores')
 class RaceScore(Resource):
     def get(self):

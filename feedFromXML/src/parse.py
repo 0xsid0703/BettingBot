@@ -6,7 +6,7 @@ from datetime import datetime
 DATA_DIR = "feedFromXML/data"
 FORM_DIR = "mr_form"
 FIELD_DIR = "mr_fields"
-START_DATE="19/11/2023"
+START_DATE="27/11/2023"
 
 def getHorseObj(horse_obj):
     db_obj = horse_obj.attrib
@@ -248,6 +248,7 @@ def buildRaceProfile():
                 tmpRace['main_track_surface'] = homeTrackAttrib['track_surface'] if 'track_surface' in homeTrackAttrib else ''
                 tmpRace['main_track_3char_abbrev'] = homeTrackAttrib['track_3char_abbrev'] if 'track_3char_abbrev' in homeTrackAttrib else ''
                 tmpRace['main_track_condition'] = homeTrackAttrib['expected_condition'] if 'expected_condition' in homeTrackAttrib else ''
+                tmpRace['main_track_country'] = homeTrackAttrib['country'] if 'country' in homeTrackAttrib else ''
                 tmpRace['main_race_num'] = race.attrib['number'] if 'number' in race.attrib else ''
                 tmpRace['main_race_name'] = race.attrib['name'] if 'name' in race.attrib else ''
                 tmpRace['main_race_id'] = race.attrib['id'] if 'id' in race.attrib else ''
@@ -284,7 +285,7 @@ def buildRaceProfile():
                 sire = horse.find('sire')
                 sireAttrib = sire.attrib
 
-                dam = horse.find('sire')
+                dam = horse.find('dam')
                 damAttrib = dam.attrib
 
                 sire_dam = horse.find('sire_of_dam')
@@ -402,6 +403,7 @@ def buildRaceProfile():
                     tmp['home_track_surface'] = homeTrackAttrib['track_surface'] if 'track_surface' in homeTrackAttrib else ''
                     tmp['home_track_3char_abbrev'] = homeTrackAttrib['track_3char_abbrev'] if 'track_3char_abbrev' in homeTrackAttrib else ''
                     tmp['home_track_condition'] = homeTrackAttrib['expected_condition'] if 'expected_condition' in homeTrackAttrib else ''
+                    tmp['home_track_country'] = homeTrackAttrib['country'] if 'country' in homeTrackAttrib else ''
 
                     tmp['home_race_num'] = race.attrib['number'] if 'number' in race.attrib else ''
                     tmp['home_race_name'] = race.attrib['name'] if 'name' in race.attrib else ''
@@ -492,8 +494,12 @@ def buildRaceProfile():
                             except:
                                 tmp['margin'] = -1
                         if child.tag == "event_duration":
-                            t = child.text.split (":")
-                            tmp['time'] = float (t[1]) + 60 * float(t[0])
+                            if ':' not in child.text:
+                                t = child.text.split(".")
+                                tmp['time'] = (float (t[2]) * 0.1 if len(t) > 2 else 0) + (float(t[1]) if len(t) > 1 else 0) + (60 * float(t[0]) if len(t) > 0 else 0)
+                            else:
+                                t = child.text.split (":")
+                                tmp['time'] = (float (t[1]) if len(t) > 1 else 0) + 60 * (float(t[0]) if len(t) > 0 else 0)
                         if child.tag == "event_prizemoney":
                             tmp['prizemoney_won'] = float(child.text)
                         if child.tag == "horse_prizemoney":

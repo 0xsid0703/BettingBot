@@ -44,7 +44,7 @@ class Horse(ColManager):
 
     def getHorseById(self, id):
         try:
-            horse = self.manager.find_one ({"id": id})
+            horse = self.manager.find_one ({"id": {"$in": [int(id), str(id)]}})
             return horse
         except:
             return None

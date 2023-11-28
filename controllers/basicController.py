@@ -25,12 +25,17 @@ class BasicController(Controller):
         data = []
         marketIds = []
         
+        def sortFunc(market):
+            return market['marketStartTime'].timestamp()
+
         mapWinToPlace = {}
         for e in eList:
-            marketIds += [market['marketId'] for market in e['markets'] if market["marketCatalogueDescription"]['marketType'] == "PLACE"]
-            for winMarket in e['markets']:
+            markets = e['markets']
+            markets.sort (key=sortFunc)
+            marketIds += [market['marketId'] for market in markets if market["marketCatalogueDescription"]['marketType'] == "PLACE"]
+            for winMarket in markets:
                 if winMarket["marketCatalogueDescription"]['marketType'] == "WIN":
-                    for placeMarket in e['markets']:
+                    for placeMarket in markets:
                         if placeMarket["marketCatalogueDescription"]['marketType'] == "PLACE" and winMarket['marketStartTime'] == placeMarket['marketStartTime']:
                             mapWinToPlace[winMarket['marketId']] = placeMarket['marketId']
                             break
@@ -40,10 +45,13 @@ class BasicController(Controller):
 
         for e in eList:
             if e['eventId'] == 32707774: continue
+            print (e['eventVenue'], betDate)
+            if betDate == "2023-11-23" and e['eventVenue'] == "Scone": continue
             e['_id'] = str(e['_id'])
-            
-            lastMarket = e['markets'][-1]
-            if (lastMarket['marketStartTime'] - datetime.now()).seconds > 0:
+            markets = e['markets']
+            markets.sort (key=sortFunc)
+            lastMarket = markets[-1]
+            if lastMarket['marketStartTime'] > datetime.now():
                 if lastMarket['marketBook']['status'] == 'CLOSED': continue
             tmp = {
                 "venue": e['eventVenue'],
@@ -56,10 +64,11 @@ class BasicController(Controller):
                              "runners": marketBookWithRunners[mapWinToPlace[market['marketId']]] if mapWinToPlace[market['marketId']] in marketBookWithRunners and market['marketId'] in mapWinToPlace else [],
                              "runnersId": {runner['selectionId']: runner['sortPriority'] for runner in market['runners']}
                             } 
-                            for market in e['markets'] if market["marketCatalogueDescription"]["marketType"] == marketType]
+                            for market in markets if market["marketCatalogueDescription"]["marketType"] == marketType]
             }
             
             data.append (tmp)
+        print (len(data), "LLLL")
         return {
             "success": True,
             "data": data,
