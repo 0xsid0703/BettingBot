@@ -89,17 +89,17 @@ def downloadMedialityFiles():
 def main():
     connectDatabase()
 
-    daemonSaveXMLData ()
+    # daemonSaveXMLData ()
 
-    # while True:
-    #     evt = threading.Event()
-    #     saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
-    #     # saveMarketBook = threading.Thread(target=daemonSaveMarketBook, args=(15,))
-    #     saveEvent.start ()
-    #     time.sleep (3600)
-    #     evt.set ()
-    #     print (">>>>>>>")
-    #     time.sleep (30)
+    while True:
+        evt = threading.Event()
+        saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
+        # saveMarketBook = threading.Thread(target=daemonSaveMarketBook, args=(15,))
+        saveEvent.start ()
+        time.sleep (3600)
+        evt.set ()
+        print (">>>>>>>")
+        time.sleep (30)
         # saveMarketBook.start ()
 
 if __name__ == "__main__":

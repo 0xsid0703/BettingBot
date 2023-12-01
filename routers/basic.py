@@ -13,6 +13,11 @@ class EventList(Resource):
     def get(self, type, date):
         return basicController.getEvents (date.strip(), [7], ['AU', 'NZ', 'SG'], type)
 
+@api.route ('/upcomingevents/<type>')
+class EventList(Resource):
+    def get(self, type):
+        return basicController.getUpcomingEvents ([7], ['AU', 'NZ', 'SG'], type)
+    
 @api.route ('/events/getrunners/<market_id>')
 class GetRunners(Resource):
     def get(self, market_id):

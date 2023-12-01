@@ -9,6 +9,16 @@ from utils.JSONEncoder import JSONEncoder
 from utils.constants import *
 from utils.logging import basicControllerLogger
 
+CONDITION = {
+    'F': 'FIRM',
+    'G': 'GOOD',
+    'H': 'HEAVY',
+    'D': 'DEAD',
+    'S': 'SOFT',
+    'Y': 'SYNTHETIC',
+    'O': 'SOFT'
+}
+
 class BasicController(Controller):
 
     def __init__(self):
@@ -20,16 +30,43 @@ class BasicController(Controller):
                 "success": False,
                 "msg": "Event type id array parameter should be not empty. Check this parameter again."
             }
+
+        mainRaces = dbManager.raceCol.getMainRacesByDate (betDate)
+        condition = {}
+        for mainRace in mainRaces:
+            if mainRace['main_track_name'] is None: continue
+            if len(mainRace['main_track_name']) == 0: continue
+            if mainRace['main_track_name'] in condition:
+                if mainRace['main_race_num'] in condition[mainRace['main_track_name']]:
+                    continue
+                else:
+                    condition[mainRace['main_track_name']] = mainRace['main_track_condition']
+            else:
+                condition[mainRace['main_track_name']] = mainRace['main_track_condition']
         
         eList = dbManager.eventCol.getDocumentsByDate (betDate, eventTypeIds, countryCodeList, marketType)
+        return self.getEventsFilterByType(eList, marketType, condition)
+
+    def getUpcomingEvents(self, eventTypeIds, countryCodeList, marketType):
+        if eventTypeIds is None or len(eventTypeIds) == 0:
+            return {
+                "success": False,
+                "msg": "Event type id array parameter should be not empty. Check this parameter again."
+            }
+        
+        eList = dbManager.eventCol.getUpcomingDocuments (eventTypeIds, countryCodeList, marketType)
+        return self.getEventsFilterByType(eList, marketType)
+
+    def getEventsFilterByType(self, eventList, marketType, condition={}):
         data = []
         marketIds = []
+        trackNames = list(condition.keys())
         
         def sortFunc(market):
             return market['marketStartTime'].timestamp()
 
         mapWinToPlace = {}
-        for e in eList:
+        for e in eventList:
             markets = e['markets']
             markets.sort (key=sortFunc)
             marketIds += [market['marketId'] for market in markets if market["marketCatalogueDescription"]['marketType'] == "PLACE"]
@@ -43,19 +80,23 @@ class BasicController(Controller):
         marketBooks = dbManager.marketBookCol.getMarketBooksByIds(marketIds)
         marketBookWithRunners = {marketBook['marketId']: marketBook['runners'] for marketBook in marketBooks}
 
-        for e in eList:
+        for e in eventList:
             if e['eventId'] == 32707774: continue
-            print (e['eventVenue'], betDate)
-            if betDate == "2023-11-23" and e['eventVenue'] == "Scone": continue
             e['_id'] = str(e['_id'])
             markets = e['markets']
             markets.sort (key=sortFunc)
             lastMarket = markets[-1]
             if lastMarket['marketStartTime'] > datetime.now():
                 if lastMarket['marketBook']['status'] == 'CLOSED': continue
+            tName = ''
+            for trackName in trackNames:
+                if e['eventVenue'] in trackName:
+                    tName = trackName
+            
             tmp = {
                 "venue": e['eventVenue'],
                 "countryCode": e['countryCode'],
+                'condition': CONDITION[condition[tName][0]] if tName in condition and len(condition[tName]) > 0 else '',
                 "markets": [{"startTime": market['marketStartTime'].strftime("%Y-%m-%dT%H:%M:%SZ"),
                              "marketId": market['marketId'],
                              "venue": e['eventVenue'],
@@ -68,7 +109,7 @@ class BasicController(Controller):
             }
             
             data.append (tmp)
-        print (len(data), "LLLL")
+        
         return {
             "success": True,
             "data": data,

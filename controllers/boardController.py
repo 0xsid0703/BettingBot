@@ -34,6 +34,21 @@ SORT_FIELD = {
     "TOTAL": 'total'
 }
 
+RACECARD_SORT_FIELD = {
+    'NO': 'tab_no',
+    'HORSE': 'horse_name',
+    'JOCKEY': 'jockey_name',
+    'STARTS': 'starts',
+    'BARRIER': 'horse_barrier',
+    'WEIGHT': 'weight',
+    'SCORE': 'score',
+    'FRAMED': 'framed_odds',
+    'BETFAIR': 'betfair',
+    'DIFF': 'diff',
+    'TEN_DIFF': '10m',
+    'FIVE_DIFF': '5m'
+}
+
 class BoardController(Controller):
 
     def __init__(self):
@@ -372,6 +387,7 @@ class BoardController(Controller):
     
     def getRaceCardByNum(self, dateStr, trackName, raceNum, condition):
         races = dbManager.raceCol.getMainRaceByNum(datetime.strptime(dateStr, "%Y-%m-%d"), trackName, raceNum)
+
         if races is None or (races is not None and len(list(races)) == 0):
             return None
 
@@ -390,8 +406,9 @@ class BoardController(Controller):
                 marketStartTime = marketBook['marketDefinition']['marketTime']
                 for runner in marketBook['runners']:
                     statusRunners[runner['selectionId']] = runner['status']
-                    betfairs[runner['selectionId']] = float(runner['sp']['nearPrice']) if 'nearPrice' in runner['sp'] else 0
-                    bsp[runner['selectionId']] = float(runner['sp']['nearPrice']) if marketStartTime > datetime.now() else float(runner['sp']['actualSp'])
+                    betfairs[runner['selectionId']] = float(runner['sp']['nearPrice']) if marketBook['status'] == "OPEN" else float(runner['sp']['actualSp'])
+                    bsp[runner['selectionId']] = float(runner['ex']['availableToBack'][0]['size']) if len(runner['ex']['availableToBack']) > 0 and marketBook['status'] == "OPEN" else float(runner['sp']['actualSp'])
+                    # bsp[runner['selectionId']] = float(runner['sp']['nearPrice']) if marketBook['status'] == "OPEN" else float(runner['sp']['actualSp'])
                     if runner['status'].upper() != 'REMOVED': tmpRunners.append(runner['selectionId'])
                 for runner in market['runners']:
                     if runner['selectionId'] in tmpRunners:
@@ -402,14 +419,16 @@ class BoardController(Controller):
                         runners.append (int(pams[0][:-1]))
             if marketBook10 is not None:
                 for runner in marketBook10['runners']:
-                    betfairsIn10[runner['selectionId']] = float(runner['sp']['nearPrice']) if 'nearPrice' in runner['sp'] else 0
+                    # betfairsIn10[runner['selectionId']] = float(runner['sp']['nearPrice']) if 'nearPrice' in runner['sp'] else 0
+                    betfairsIn10[runner['selectionId']] = float(runner['ex']['availableToBack'][0]['size']) if len(runner['ex']['availableToBack']) > 0 and marketBook['status'] == "OPEN" else float(runner['sp']['nearPrice'])
                 for runner in market['runners']:
                     if runner['selectionId'] in tmpRunners:
                         pams = runner['runnerName'].split(" ")
                         betfairsIn10[pams[0][:-1]] = betfairsIn10[runner['selectionId']]
             if marketBook5 is not None:
                 for runner in marketBook5['runners']:
-                    betfairsIn5[runner['selectionId']] = float(runner['sp']['nearPrice']) if 'nearPrice' in runner['sp'] else 0
+                    # betfairsIn5[runner['selectionId']] = float(runner['sp']['nearPrice']) if 'nearPrice' in runner['sp'] else 0
+                    betfairsIn5[runner['selectionId']] = float(runner['ex']['availableToBack'][0]['size']) if len(runner['ex']['availableToBack']) > 0 and marketBook['status'] == "OPEN" else float(runner['sp']['nearPrice'])
                 for runner in market['runners']:
                     if runner['selectionId'] in tmpRunners:
                         pams = runner['runnerName'].split(" ")
@@ -428,6 +447,7 @@ class BoardController(Controller):
             "distance": races[0]['distance'],
             "startTime": races[0]['start_time'].strftime("%Y-%m-%d %H, %M:%S"),
         }
+
         horses = []
         for race in races:
             race = dict(race)
@@ -455,6 +475,7 @@ class BoardController(Controller):
             tmpHorse['jockey_id'] = race['main_jockey_id'] if 'main_jockey_id' in race else ''
             tmpHorse['horse_barrier'] = race['horse_barrier'] if 'horse_barrier' in race else 0
             tmpHorse['weight'] = race['weight_allocated'] if 'weight_allocated' in race else 0
+            tmpHorse['weight'] = float(tmpHorse['weight']) - float(race['main_jockey_allowance_weight']) if 'main_jockey_allowance_weight' in race else tmpHorse['weight']
             tmpHorse['starts'] = cnt
             tmpHorse['tab_no'] = race['tab_no']
             tmpHorse['betfair'] = float(betfairs[str(race['tab_no'])]) if str(race['tab_no']) in betfairs else 0
@@ -488,6 +509,7 @@ class BoardController(Controller):
             tmpHorse['score'] = horseScores[tmpHorse['horse_name']] if horseScores is not None and tmpHorse['horse_name'] in horseScores else 0
             tmpHorse['diff'] = (float(tmpHorse['betfair']) - float(tmpHorse['framed_odds'])) * 100 / float(tmpHorse['framed_odds']) if float(tmpHorse['framed_odds']) > 0 else 100
             horses.append (tmpHorse)
+        
         rlt['horses'] =  horses
         return rlt
 
@@ -528,6 +550,7 @@ class BoardController(Controller):
             "startTime": races[0]['start_time'].strftime("%Y-%m-%d %H, %M:%S"),
         }
         horses = []
+        print (len(races), trackName, "KKKKKKKKKKKKK")
         for race in races:
             race = dict(race)
             if len(runners) > 0 and 'tab_no' in race and int(race['tab_no']) not in runners:
@@ -549,9 +572,13 @@ class BoardController(Controller):
             sumTrainer = 0; cntTrainer = 0
             sumJockey = 0; cntJockey = 0
             sumSettling = 0; sumSpeed = 0
-            sumLast600 = 0; cntLast600 = 0
+            sumLast600 = 0; cntLast600 = 0; cntSpeed = 0
             lastR = None; startDate = datetime.strptime("1970/01/01", "%Y/%m/%d")
-            # if 'races' not in horse: horse['races'] = []
+            sumLastMgn = 0; sumLastFn = 0
+            cntLastMgn = 0; cntLastFn = 0
+
+            print (trackName, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
             cnt = 0
             for r in horseRaces:
                 r = dict (r)
@@ -595,12 +622,17 @@ class BoardController(Controller):
                 except:
                     pass
                 try:
+                    
                     sumLast600 += float(r['last_600'])
                     if 'last_600' in r and r['last_600'] > 0: cntLast600 += 1
                 except:
                     pass
                 try:
-                    sumSpeed += float(r['speed']) * 3.6
+                    if isinstance(r['speed'], str):
+                        continue
+                    else:
+                        sumSpeed += float(r['speed']) * 3.6
+                        cntSpeed += 1
                 except:
                     pass
                 try:
@@ -646,7 +678,7 @@ class BoardController(Controller):
             tmpHorse['jockey'] = "{:.2f}".format(sumJockey/cntJockey) if cntJockey > 0 else 0
             tmpHorse['settling'] = "{:.2f}".format(sumSettling/cnt) if cnt > 0 else 0
             tmpHorse['last_600'] = "{:.2f}".format(sumLast600/cntLast600) if cntLast600 > 0 else 0
-            tmpHorse['speed'] = "{:.2f}".format(sumSpeed/cnt) if cnt > 0 else 0
+            tmpHorse['speed'] = "{:.2f}".format(sumSpeed/cntSpeed) if cntSpeed > 0 else 0
             tmpHorse['starts'] = cnt
             tmpHorse['tab_no'] = race['tab_no']
             tmpHorse['horse_silk'] = race['horse_silk'] if 'horse_silk' in race else ''
@@ -670,18 +702,32 @@ class BoardController(Controller):
                 tmpHorse['gear'] = hColor + "-" + 'W'
             
             if lastR is not None:
-                tmpHorse['lastFn'] = lastR['finish_percentage'] if 'finish_percentage' in lastR else 0
-                tmpHorse['lastMgn'] = lastR['margin'] if 'margin' in lastR else 10
-                tmpHorse['lastMgn'] = 0 if tmpHorse['lastFn'] == 100 else 10
+                tmpHorse['lastFn'] = lastR['finish_percentage'] if 'finish_percentage' in lastR else -1
+                tmpHorse['lastMgn'] = lastR['margin'] if 'margin' in lastR else -1
+                tmpHorse['lastMgn'] = 0 if tmpHorse['lastFn'] == 100 else -1
                 if 'margin' in lastR:
                     try:
                         tmpHorse['lastMgn'] = 0 if int(lastR['finish_percentage']) == 100 else lastR['margin']
                     except:
                         tmpHorse['lastMgn'] = -1
                 else:
-                    tmpHorse['lastMgn'] = 10
+                    tmpHorse['lastMgn'] = -1
+                if tmpHorse['lastMgn'] > -1:
+                    sumLastMgn += tmpHorse['lastMgn']
+                    cntLastMgn += 1
+                if tmpHorse['lastFn'] > -1:
+                    sumLastFn += tmpHorse['lastFn']
+                    cntLastFn += 1
             horses.append (tmpHorse)
-        rlt['horses'] =  horses
+        avgFn = sumLastFn / cntLastFn if cntLastFn > 0 else 0
+        avgMgn = sumLastMgn / cntLastMgn if cntLastMgn > 0 else 0
+        tmpHorses = []
+        for horse in horses:
+            if horse['lastFn'] == -1: horse['lastFn'] = avgFn
+            if horse['lastMgn'] == -1: horse['lastMgn'] = avgMgn
+            tmpHorses.append (horse)
+        
+        rlt['horses'] =  tmpHorses
         return rlt
 
     def getRaceHorseScores(self, dateStr, trackName, raceNum, condition="Good"):

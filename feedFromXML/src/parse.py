@@ -248,6 +248,7 @@ def buildRaceProfile():
                 tmpRace['main_track_surface'] = homeTrackAttrib['track_surface'] if 'track_surface' in homeTrackAttrib else ''
                 tmpRace['main_track_3char_abbrev'] = homeTrackAttrib['track_3char_abbrev'] if 'track_3char_abbrev' in homeTrackAttrib else ''
                 tmpRace['main_track_condition'] = homeTrackAttrib['expected_condition'] if 'expected_condition' in homeTrackAttrib else ''
+                tmpRace['main_track_club'] = homeTrackAttrib['club'] if 'club' in homeTrackAttrib else ''
                 tmpRace['main_track_country'] = homeTrackAttrib['country'] if 'country' in homeTrackAttrib else ''
                 tmpRace['main_race_num'] = race.attrib['number'] if 'number' in race.attrib else ''
                 tmpRace['main_race_name'] = race.attrib['name'] if 'name' in race.attrib else ''

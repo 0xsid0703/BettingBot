@@ -24,11 +24,21 @@ class MarketBook(ColManager):
                 self.manager.insert_one (mb)
                 return
             sp = {}
+            bsp = {}
+            status = {}
             for runner in mb['runners']:
                 sp[runner['selectionId']] = runner['sp']['nearPrice'] if 'nearPrice' in runner['sp'] else -1
+                bsp[runner['selectionId']] = runner['sp']['actualSp'] if 'actualSp' in runner['sp'] else -1
+                status[runner['selectionId']] = runner['status'] if 'status' in runner else ''
             for runner in mbs[0]['runners']:
                 print (sp[runner['selectionId']] != runner['sp']['nearPrice'], runner['sp']['nearPrice'], sp[runner['selectionId']])
                 if 'nearPrice' in runner['sp'] and sp[runner['selectionId']] != runner['sp']['nearPrice']:
+                    self.manager.insert_one (mb)
+                    return
+                if 'actualSp' in runner['sp'] and bsp[runner['selectionId']] != runner['sp']['actualSp']:
+                    self.manager.insert_one (mb)
+                    return
+                if 'status' in runner and status[runner['selectionId']] != runner['status']:
                     self.manager.insert_one (mb)
                     return
             # count = self.manager.count_documents ({'marketId': mb['marketId'], 'publishTime': mb['publishTime']})

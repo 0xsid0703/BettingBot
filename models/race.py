@@ -22,7 +22,6 @@ class Race(ColManager):
                     "track_id": race_obj['track_id'],
                     "horse_id": race_obj['horse_id']
                 })
-                print (race_obj['home_date'], race_obj['home_race_num'], race_obj['horse_id'], race_obj['horse_name'], cnt)
                 if cnt > 0:
                     self.manager.update_one(
                         {"home_date":race_obj['home_date'], "home_race_num":race_obj['home_race_num'], "date":race_obj['date'], "race_num": race_obj['race_num'], "track_id": race_obj['track_id'], "horse_id": race_obj['horse_id']},
@@ -55,7 +54,6 @@ class Race(ColManager):
         return races
     
     def getMainRaceByNum(self, date_obj, track_name, race_num):
-        print (date_obj, track_name, race_num, "FFF")
         races = self.manager.find({
             "main_track_name": {"$regex": track_name},
             "main_race_num": {"$in": [int(race_num), str(race_num)]},
@@ -110,3 +108,7 @@ class Race(ColManager):
     def removeRaceByDate(self, date_str):
         self.manager.delete_many ({'date': datetime.datetime.strptime(date_str, "%d/%m/%Y")})
         self.manager.delete_many ({'home_date': datetime.datetime.strptime(date_str, "%d/%m/%Y")})
+    
+    def getMainRacesByDate(self, dateStr):
+        mainRaces = self.manager.find ({'date': datetime.datetime.strptime(dateStr, "%Y-%m-%d"), 'main_track_id': {'$ne': ''}, 'main_track_condition': {'$ne': ''}})
+        return mainRaces

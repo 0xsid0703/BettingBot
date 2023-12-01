@@ -59,6 +59,23 @@ class Event(ColManager):
             })
             rlt += list(events)
         return rlt
+    
+    def getUpcomingDocuments(self, eventTypeIds, countryCodeList, marketType):
+        todayStr = datetime.utcnow().strftime("%Y-%m-%d")
+        tomorrowStr = (datetime.utcnow() + timedelta(hours=24)).strftime("%Y-%m-%d")
+        rlt = []
+        for countryCode in countryCodeList:
+            [minTodayDate, maxTodayDate] = getTimeRangeOfCountry(todayStr, countryCode.upper())
+            [minTodmorrowDate, maxTomorrowDate] = getTimeRangeOfCountry(tomorrowStr, countryCode.upper())
+            events = self.manager.find ({
+                "eventVenue": {"$ne": ""},
+                "countryCode": countryCode.upper(),
+                "markets.marketStartTime": {"$gt": minTodayDate, "$lt": maxTomorrowDate},
+                "markets.marketCatalogueDescription.marketType": marketType,
+                "markets.marketCatalogueDescription.raceType": {"$ne": "Harness"}
+            })
+            rlt += list(events)
+        return rlt
 
     def getDocumentsByFromDate(self, dateStr, eventTypeIds, countryCode):
         [minDate, maxDate] = getTimeRangeOfCountry(dateStr, countryCode.upper())
