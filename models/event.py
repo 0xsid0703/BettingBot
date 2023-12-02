@@ -114,22 +114,31 @@ class Event(ColManager):
     def sortFuncMarketStartTime(self, market):
         return market['marketStartTime'].timestamp()
 
-    def getMarketByNum(self, dateObj, trackName, raceNum = 1):
-        pipeline = [
-            {"$match": {"$expr": {"$regexMatch": {"input": trackName, "regex": "$eventVenue"}}, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}}}
-        ]
-        event = self.manager.aggregate (pipeline)
+    def getMarketByNum(self, marketId):
+        # pipeline = [
+        #     {"$match": {"$expr": {"$regexMatch": {"input": trackName, "regex": "$eventVenue"}}, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}}}
+        # ]
+        event = self.manager.find_one ({"markets.marketId": marketId})
         # event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}})
         if event is None: return None
-        raceCnt = 0
-        markets = list(event)[0]['markets']
+        raceNum = 0
+        event = dict(event)
+        try:
+            markets = event['markets']
+        except:
+            markets = event['markets']
         markets.sort (key=self.sortFuncMarketStartTime)
         for market in markets:
             # if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
-            if market['marketCatalogueDescription']['marketType'] == "WIN":
-                raceCnt += 1
-                if raceCnt == int(raceNum):
-                    return market
+            if market['marketCatalogueDescription']['marketType'] == "PLACE":
+                raceNum += 1
+            if market["marketId"] == marketId:
+                return market
+        # for market in markets:
+        #     if market['marketCatalogueDescription']['marketType'] == "WIN":
+        #         raceCnt += 1
+        #     if raceCnt == raceNum:
+        #         return market
         return None
     
     def getTotalMatchedByID(self, marketId):

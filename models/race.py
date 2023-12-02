@@ -59,10 +59,29 @@ class Race(ColManager):
             "main_race_num": {"$in": [int(race_num), str(race_num)]},
             "date": date_obj
         })
-        
         if races is None:
-            return None
-        return list(races)
+            races = self.manager.find({
+                "main_race_name": {"$regex": track_name},
+                "main_race_num": {"$in": [int(race_num), str(race_num)]},
+                "date": date_obj
+            })
+            if races is None:
+                return None
+            return list(races)
+        else:
+            races = list(races)
+            if len(races) > 0:
+                return races
+            else:
+                races = self.manager.find({
+                    "main_track_club": {"$regex": track_name},
+                    "main_race_num": {"$in": [int(race_num), str(race_num)]},
+                    "date": date_obj
+                })
+                if races is None:
+                    return None
+                else:
+                    return list(races)
     
     def getRacesByHorseId(self, date_obj, track_name, race_num, horse_id):
         match = {}
@@ -86,7 +105,7 @@ class Race(ColManager):
         if race_num is not None:
             match['home_race_num'] = race_num
         if jockey_id is not None:
-            match['jockey_id'] = jockey_id
+            match['jockey_id'] = {"$in": [int(jockey_id), str(jockey_id)]}
         
         races = self.manager.find(match).sort("date", -1)
         return list(races)
@@ -100,7 +119,7 @@ class Race(ColManager):
         if race_num is not None:
             match['home_race_num'] = race_num
         if trainer_id is not None:
-            match['trainer_id'] = trainer_id
+            match['trainer_id'] = {"$in": [int(trainer_id), str(trainer_id)]}
         
         races = self.manager.find(match).sort("date", -1)
         return list(races)

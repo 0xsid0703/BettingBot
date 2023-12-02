@@ -36,6 +36,15 @@ class BasicController(Controller):
         for mainRace in mainRaces:
             if mainRace['main_track_name'] is None: continue
             if len(mainRace['main_track_name']) == 0: continue
+            if mainRace['main_track_country'] == 'SGP':
+                condition['Singapore'] = mainRace['main_track_condition']
+            if mainRace['main_track_club'] in condition:
+                if mainRace['main_race_num'] in condition[mainRace['main_track_club']]:
+                    continue
+                else:
+                    condition[mainRace['main_track_club']] = mainRace['main_track_condition']
+            else:
+                condition[mainRace['main_track_club']] = mainRace['main_track_condition']
             if mainRace['main_track_name'] in condition:
                 if mainRace['main_race_num'] in condition[mainRace['main_track_name']]:
                     continue
@@ -96,7 +105,7 @@ class BasicController(Controller):
             tmp = {
                 "venue": e['eventVenue'],
                 "countryCode": e['countryCode'],
-                'condition': CONDITION[condition[tName][0]] if tName in condition and len(condition[tName]) > 0 else '',
+                'condition': CONDITION[condition[tName][0]] if tName in condition and len(condition[tName]) > 0 else CONDITION[condition['Singapore']] if 'Singapore' in condition and e['countryCode'] == 'SG' else '',
                 "markets": [{"startTime": market['marketStartTime'].strftime("%Y-%m-%dT%H:%M:%SZ"),
                              "marketId": market['marketId'],
                              "venue": e['eventVenue'],
@@ -139,7 +148,7 @@ class BasicController(Controller):
                 
                 marketPercent = 0
                 for runner in marketBook[0]['runners']:
-                    marketPercent += 1 / float(runner['ex']['availableToBack'][0]['price'])
+                    marketPercent += 1 / float(runner['ex']['availableToBack'][0]['price']) if len(runner['ex']['availableToBack']) > 0 else 0
                 
                 if req == 0:
                     return {
