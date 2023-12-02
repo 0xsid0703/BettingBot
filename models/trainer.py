@@ -44,7 +44,7 @@ class Trainer(ColManager):
 
     def getTrainerById(self, id):
         try:
-            trainer = self.manager.find_one({"id": id})
+            trainer = self.manager.find_one({"id": {"$in": [int(id), str(id)]}})
             return trainer
         except:
             return None

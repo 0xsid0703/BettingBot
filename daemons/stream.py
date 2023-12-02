@@ -89,7 +89,8 @@ class MarketBookCather:
                         marketBook['runners'][0]['sp']['nearPrice'],
                         marketBook['runners'][0]['sp']['farPrice'],
                         marketBook['marketId'],
-                        marketBook['version']
+                        marketBook['version'],
+                        marketBook['publishTime']
                     )
                 except:
                     pass
@@ -108,33 +109,12 @@ def myKillProcess(processList):
                 print (f"Process with ID {p} not found.")
         time.sleep (600)
 
-# def getQueueData(output_queue): 
-#     while True:
-#         print ("Capture queue data started...")
-#         marketBooks = output_queue.get()
-#         print (marketBooks, ">>> poped")
-        
-#         mbs = tradingObj.convertMarketBookToData (marketBooks)
-
-#         for marketBook in mbs:
-#             # dbManager.marketBookCol.saveBook (marketBook)
-#             for runner in marketBook['runners']:
-#                 try:
-#                     print(
-#                         runner['sp']['actualSp'],
-#                         runner['sp']['nearPrice'],
-#                         runner['sp']['farPrice'],
-#                         marketBook['marketId']
-#                     )
-#                 except:
-#                     pass
-
 def sortFunc (item):
     return item[1].timestamp()
 
 def captureMarkets(processList):
     while True:
-        events = tradingObj.getEvents('au', [7])
+        events = tradingObj.getEvents(['au', 'nz', 'sg'], [7])
         winMarkets = []
         placeMarkets = []
         for event in events:
@@ -175,16 +155,16 @@ def captureMarkets(processList):
                 if len(placeMarkets) > 0:
                     pm = MarketBookCather([item[0] for item in placeMarkets])
                     processList.append (pm.pid)
-                try:
-                    if (winMarkets[0][1] - datetime.now()).total_seconds() > 0:
-                        if (winMarkets[0][1] - datetime.now()).total_seconds() > 3600:
-                            time.sleep (3600)
-                    else:
-                        break
-                    print (processList, "processList >>>>")
-                except:
-                    pass
-            time.sleep (10)
+                # try:
+                #     if (winMarkets[0][1] - datetime.now()).total_seconds() > 0:
+                #         if (winMarkets[0][1] - datetime.now()).total_seconds() > 3600:
+                #             time.sleep (3600)
+                #     else:
+                #         break
+                #     print (processList, "processList >>>>")
+                # except:
+                #     pass
+            time.sleep (15)
             if (datetime.now() - startLoop).total_seconds() > 18000: break
 
 def main():

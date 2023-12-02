@@ -44,7 +44,7 @@ class Jockey(ColManager):
 
     def getJockeyById(self, id):
         try:
-            jockey = self.manager.find_one({"id": id})
-            return jockey
+            jockey = self.manager.find_one({"id": {"$in": [int(id), str(id)]}})
+            return dict(jockey)
         except:
             return None

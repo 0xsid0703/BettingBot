@@ -1,7 +1,7 @@
 from mongoengine import *
 from datetime import datetime, timedelta
 from .colManager import ColManager
-
+import re
 import sys
 sys.path.append ("..")
 from utils.logging import eventLogger
@@ -13,6 +13,12 @@ class Event(ColManager):
     
     def saveList(self, dList):
         for d in dList:
+            markets = d['markets']
+            markets.sort (key=self.sortFuncMarketStartTime)
+            lastMarket = markets[-1]
+            if lastMarket['marketStartTime'] > datetime.now():
+                if lastMarket['marketBook']['status'] == 'CLOSED': continue
+
             eventCount = self.manager.count_documents ({"eventId": d["eventId"]})
             if (eventCount > 0):
                 updateObj = {}
@@ -48,6 +54,23 @@ class Event(ColManager):
                 "eventVenue": {"$ne": ""},
                 "countryCode": countryCode.upper(),
                 "markets.marketStartTime": {"$gt": minDate, "$lt": maxDate},
+                "markets.marketCatalogueDescription.marketType": marketType,
+                "markets.marketCatalogueDescription.raceType": {"$ne": "Harness"}
+            })
+            rlt += list(events)
+        return rlt
+    
+    def getUpcomingDocuments(self, eventTypeIds, countryCodeList, marketType):
+        todayStr = datetime.utcnow().strftime("%Y-%m-%d")
+        tomorrowStr = (datetime.utcnow() + timedelta(hours=24)).strftime("%Y-%m-%d")
+        rlt = []
+        for countryCode in countryCodeList:
+            [minTodayDate, maxTodayDate] = getTimeRangeOfCountry(todayStr, countryCode.upper())
+            [minTodmorrowDate, maxTomorrowDate] = getTimeRangeOfCountry(tomorrowStr, countryCode.upper())
+            events = self.manager.find ({
+                "eventVenue": {"$ne": ""},
+                "countryCode": countryCode.upper(),
+                "markets.marketStartTime": {"$gt": minTodayDate, "$lt": maxTomorrowDate},
                 "markets.marketCatalogueDescription.marketType": marketType,
                 "markets.marketCatalogueDescription.raceType": {"$ne": "Harness"}
             })
@@ -91,19 +114,31 @@ class Event(ColManager):
     def sortFuncMarketStartTime(self, market):
         return market['marketStartTime'].timestamp()
 
-    def getMarketByNum(self, dateObj, trackName, raceNum = 1):
-        event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}})
+    def getMarketByNum(self, marketId):
+        # pipeline = [
+        #     {"$match": {"$expr": {"$regexMatch": {"input": trackName, "regex": "$eventVenue"}}, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}}}
+        # ]
+        event = self.manager.find_one ({"markets.marketId": marketId})
+        # event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": {"$gte": dateObj, "$lt": dateObj + timedelta(hours=24)}})
         if event is None: return None
-
-        raceCnt = 0
-        markets = event['markets']
+        raceNum = 0
+        event = dict(event)
+        try:
+            markets = event['markets']
+        except:
+            markets = event['markets']
         markets.sort (key=self.sortFuncMarketStartTime)
         for market in markets:
             # if dateObj.strftime("%Y-%m-%d %H:%M:%S") == market['marketStartTime'].strftime("%Y-%m-%d %H:%M:%S") and market['marketCatalogueDescription']['marketType'] == "WIN":
-            if market['marketCatalogueDescription']['marketType'] == "WIN":
-                raceCnt += 1
-                if raceCnt == int(raceNum):
-                    return market
+            if market['marketCatalogueDescription']['marketType'] == "PLACE":
+                raceNum += 1
+            if market["marketId"] == marketId:
+                return market
+        # for market in markets:
+        #     if market['marketCatalogueDescription']['marketType'] == "WIN":
+        #         raceCnt += 1
+        #     if raceCnt == raceNum:
+        #         return market
         return None
     
     def getTotalMatchedByID(self, marketId):
