@@ -281,8 +281,13 @@ CLASSES = {
     "Rst 0 Met Win-LY": 2.75,
     "RS0LY": 2.75,
     "RST52": 3,
+    "RST53": 3,
     "RST54": 3.25,
     "RST55": 3.25,
+    "RST56": 3.5,
+    "RST57": 3.5,
+    "RST58": 3.75,
+    "RST59": 3.75,
     "RST60": 3.5,
     "RST61": 3.75,
     "RST62": 3.75,
@@ -348,4 +353,14 @@ COLOR_RESP = {
     'pi': 'gr',
     'pl': 'b',
     'ap': 'gr'
+}
+
+CONDITION = {
+    'F': 'FIRM',
+    'G': 'GOOD',
+    'H': 'HEAVY',
+    'D': 'DEAD',
+    'S': 'SOFT',
+    'Y': 'SYNTHETIC',
+    'O': 'SOFT'
 }

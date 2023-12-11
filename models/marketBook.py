@@ -105,7 +105,7 @@ class MarketBook(ColManager):
         return mbs[0]
     
     def getRecentMarketBookById(self, marketId):
-        mbs = list(self.manager.find({"marketId": marketId}).sort("publishTime", -1))
+        mbs = list(self.manager.find({"marketId": marketId}).sort("publishTime", -1).limit(1))
         if mbs is None: return None
         if len(mbs) == 0: return None
         return mbs[0]

@@ -1,14 +1,17 @@
 
-import pandas as pd
 import os
 import time
 import json
 from datetime import datetime
 import threading
+
+import sys
+curDir = os.path.dirname(os.path.realpath(__file__))
+rootDir = os.path.abspath(os.path.join(curDir, os.pardir))
+sys.path.append (rootDir)
 from betfairs.trading import tradingObj
 from utils.logging import daemonLogger
-
-from feedFromXML.src.parse import buildRaceProfile, parse
+from feedFromXML.src.parse import buildRaceProfile
 
 from models.dbManager import dbManager
 
@@ -100,7 +103,6 @@ def main():
         evt.set ()
         print (">>>>>>>")
         time.sleep (30)
-        # saveMarketBook.start ()
 
 if __name__ == "__main__":
     main()

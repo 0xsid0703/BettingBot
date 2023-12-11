@@ -51,20 +51,35 @@ class Horse(ColManager):
         except:
             return None
     
+    def getFirstRacesByIds(self, ids):
+        try:
+            nids = [int(id) for id in ids]
+            horses = self.manager.find ({"id": {"$in": ids + nids}})
+            horses = list(horses)
+            if len(horses) == 0: return {}
+            def sortFunc(race):
+                return race['date']
+            rlt = {}
+            for horse in horses:
+                races = horse['races']
+                races.sort (key=sortFunc)
+                rlt[str(races[0]['horse_id'])] = races[0]
+            return rlt
+        except:
+            return {}
+    
     def getMaidenHorses(self, classValue, distance, condition, trackId):
-            horses = self.manager.find ({"races": {"$size": 1}}).sort ("date", -1)
+            horses = self.manager.find ({"races": {"$size": 1}}).sort ("races.date", -1)
             horses = list(horses)
             horses = horses[:min(200, len(horses))]
-            sumLastMgn = 0; sumLastFn = 0
-            cntLastMgn = 0; cntLastFn = 0
-            totalSpeed = 0; cntTotalSpeed = 0
+            totalSpeed = 0; 
             totalLast600 = 0; cntTotalLast600 = 0
             totalSettling = 0; cntTotalSettling = 0
             totalTrack = 0; cntTotalTrack = 0
             totalDistance = 0; cntTotalDistance = 0
             totalCondition = 0; cntTotalCondition = 0
-            totalWin = 0; cntTotalWin = 0
-            totalPlace = 0; cntTotalPlace = 0
+            totalWin = 0
+            totalPlace = 0
             totalFinish = 0; cntTotalFinish = 0
             totalAvg = 0; cntTotalAvg = 0
             totalClass = 0; cntTotalClass = 0
@@ -77,7 +92,7 @@ class Horse(ColManager):
                 cntTotalAvg += 1
                 try:
                     totalFinish += float(r['finish_percentage']) if 'finish_percentage' in r else 0
-                    cntTotalFinish += 1 if 'finish_percentage' in r and float(r['finish_percentage']) > 0 else 0
+                    cntTotalFinish += 1
                 except:
                     pass
                 try:
@@ -87,40 +102,38 @@ class Horse(ColManager):
                 try:
                     if getRegularClassStr(classValue) == getRegularClassStr(r['class']):
                         totalClass += float(r['finish_percentage']) if 'finish_percentage' in r else 0
-                        cntTotalClass += 1 if 'finish_percentage' in r and float(r['finish_percentage']) > 0 else 0
+                        cntTotalClass += 1 
                 except:
                     pass
                 try:
                     if r['track_condition'].startswith(condition[0]):
                         totalCondition += float(r['finish_percentage'])
-                        cntTotalCondition += 1 if 'finish_percentage' in r and float(r['finish_percentage']) > 0 else 0
+                        cntTotalCondition += 1
                 except:
                     pass
                 try:
                     if math.ceil(int(r['distance'])/100) * 100 == math.ceil(int(distance)/100) * 100:
-                        cntTotalDistance += 1 if 'finish_percentage' in r and float(r['finish_percentage']) > 0 else 0
+                        cntTotalDistance += 1
                         totalDistance += float(r['finish_percentage']) if 'finish_percentage' in r else 0
                 except:
                     pass
                 try:
                     if int(r['track_id']) == int(trackId):
-                        cntTotalTrack += 1 if 'finish_percentage' in r and float(r['finish_percentage']) > 0 else 0
+                        cntTotalTrack += 1
                         totalTrack += float(r['finish_percentage']) if 'finish_percentage' in r else 0
                 except:
                     pass
                 try:
                     totalSettling += int(r['settling']) if 'settling' in r else 0
-                    cntTotalSettling += 1 if int(r['settling']) > 0 else 0
+                    cntTotalSettling += 1
                 except:
                     pass
                 try:
-                    totalWin += int(r['win_percentage']) if 'win_percentage' in r else 0
-                    cntTotalWin += 1 if 'win_percentage' in r and int(r['win_percentage']) > 0 else 0
+                    totalWin += 1 if 'finish_number' in r and r['finish_number'] == 1 else 0
                 except:
                     pass
                 try:
-                    totalPlace += int(r['place_percentage']) if 'place_percentage' in r else 0
-                    cntTotalPlace += 1 if 'place_percentage' in r and int(r['place_percentage']) > 0 else 0
+                    totalPlace += 1 if 'finish_number' in r and r['finish_number'] < 4 else 0
                 except:
                     pass
                 try:
@@ -130,23 +143,19 @@ class Horse(ColManager):
                 except:
                     pass
                 try:
-                    if isinstance(r['speed'], str):
-                        continue
-                    else:
-                        totalSpeed += float(r['speed']) * 3.6
-                        cntTotalSpeed += 1 if float(r['speed']) > 0 else 0
+                    totalSpeed += float(r['speed']) * 3.6
                 except:
                     pass
             rlt['lastFn'] = float(horses[0]['races'][0]['finish_percentage'])
             rlt['lastMgn'] = float(horses[0]['races'][0]['margin'])
-            rlt['speed'] =  "{:.2f}".format(totalSpeed/cntTotalSpeed) if cntTotalSpeed > 0 else "0"
+            rlt['speed'] =  "{:.2f}".format(totalSpeed/cntTotalAvg) if cntTotalAvg > 0 else "0"
             rlt['last_600'] = "{:.2f}".format(totalLast600/cntTotalLast600) if cntTotalLast600 > 0 else "0"
             rlt['settling'] = "{:.2f}".format(totalSettling/cntTotalSettling) if cntTotalSettling > 0 else "0"
             rlt['track'] = "{:.2f}".format(totalTrack/cntTotalTrack) if cntTotalTrack > 0 else "0"
-            rlt['distance'] = "{:.2f}".format(totalDistance/cntTotalDistance) if cntTotalDistance > 0 else "0"
+            rlt['distance'] = "{:.2f}".format(totalDistance/cntTotalAvg) if cntTotalAvg > 0 else "0"
             rlt['condition'] = "{:.2f}".format(totalCondition/cntTotalCondition) if cntTotalCondition > 0 else "0"
-            rlt['placePercent'] = "{:.2f}".format(totalPlace/cntTotalPlace) if cntTotalPlace > 0 else "0"
-            rlt['winPercent'] = "{:.2f}".format(totalWin/cntTotalWin) if cntTotalWin > 0 else "0"
+            rlt['placePercent'] = "{:.2f}".format(totalPlace * 100/cntTotalAvg) if cntTotalAvg > 0 else "0"
+            rlt['winPercent'] = "{:.2f}".format(totalWin * 100/cntTotalAvg) if cntTotalAvg > 0 else "0"
             rlt['finishPercent'] = "{:.2f}".format(totalFinish/cntTotalFinish) if cntTotalFinish > 0 else "0"
             rlt['average'] = "{:.2f}".format(totalAvg/cntTotalAvg) if cntTotalAvg > 0 else "0"
             rlt['class'] = "{:.2f}".format(totalClass/cntTotalClass) if cntTotalClass > 0 else "0"
