@@ -18,6 +18,7 @@ class ProfileController(Controller):
             try:
                 horse = dbManager.horseCol.getHorseById(id)
                 rlt  = []
+                print (len(horse['races']), ">>>>")
                 for race in horse['races']:
                     race = dict(race)
                     if 'barrier' in race['class'].lower(): continue
@@ -26,6 +27,7 @@ class ProfileController(Controller):
                     race['date'] = race['date'].strftime("%d/%m/%y") if 'date' in race else ''
                     race['home_date'] = race['home_date'].strftime("%d/%m/%y") if 'home_date' in race else ''
                     rlt.append (race)
+                print (len(rlt), "LLLLLLLLLLLL")
                 return rlt
             except:
                 return []
