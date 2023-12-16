@@ -9,16 +9,6 @@ from utils.JSONEncoder import JSONEncoder
 from utils.constants import *
 from utils.logging import basicControllerLogger
 
-CONDITION = {
-    'F': 'FIRM',
-    'G': 'GOOD',
-    'H': 'HEAVY',
-    'D': 'DEAD',
-    'S': 'SOFT',
-    'Y': 'SYNTHETIC',
-    'O': 'SOFT'
-}
-
 class BasicController(Controller):
 
     def __init__(self):
@@ -34,25 +24,26 @@ class BasicController(Controller):
         mainRaces = dbManager.raceCol.getMainRacesByDate (betDate)
         condition = {}
         for mainRace in mainRaces:
+            if 'main_track_name' not in mainRace: continue
             if mainRace['main_track_name'] is None: continue
             if len(mainRace['main_track_name']) == 0: continue
             if mainRace['main_track_country'] == 'SGP':
                 condition['Singapore'] = mainRace['main_track_condition']
-            if mainRace['main_track_club'] in condition:
-                if mainRace['main_race_num'] in condition[mainRace['main_track_club']]:
-                    continue
-                else:
-                    condition[mainRace['main_track_club']] = mainRace['main_track_condition']
-            else:
-                condition[mainRace['main_track_club']] = mainRace['main_track_condition']
-            if mainRace['main_track_name'] in condition:
-                if mainRace['main_race_num'] in condition[mainRace['main_track_name']]:
-                    continue
-                else:
-                    condition[mainRace['main_track_name']] = mainRace['main_track_condition']
-            else:
-                condition[mainRace['main_track_name']] = mainRace['main_track_condition']
-        
+            # if mainRace['main_track_club'] in condition:
+            #     if mainRace['main_race_num'] in condition[mainRace['main_track_club']]:
+            #         continue
+            #     else:
+            #         condition[mainRace['main_track_club']] = mainRace['main_track_condition']
+            # else:
+            condition[mainRace['main_track_club']] = mainRace['condition'] if 'condition' in mainRace else mainRace['main_track_condition']
+            # if mainRace['main_track_name'] in condition:
+            #     if mainRace['main_race_num'] in condition[mainRace['main_track_name']]:
+            #         continue
+            #     else:
+            #         condition[mainRace['main_track_name']] = mainRace['main_track_condition']
+            # else:
+            condition[mainRace['main_track_name']] = mainRace['condition'] if 'condition' in mainRace else mainRace['main_track_condition']
+
         eList = dbManager.eventCol.getDocumentsByDate (betDate, eventTypeIds, countryCodeList, marketType)
         return self.getEventsFilterByType(eList, marketType, condition)
 
@@ -105,13 +96,13 @@ class BasicController(Controller):
             tmp = {
                 "venue": e['eventVenue'],
                 "countryCode": e['countryCode'],
-                'condition': CONDITION[condition[tName][0]] if tName in condition and len(condition[tName]) > 0 else CONDITION[condition['Singapore']] if 'Singapore' in condition and e['countryCode'] == 'SG' else '',
+                'condition': CONDITION[condition[tName][0]] if tName in condition and len(condition[tName]) > 0 else CONDITION[condition['Singapore'][0]] if 'Singapore' in condition and e['countryCode'] == 'SG' else '',
                 "markets": [{"startTime": market['marketStartTime'].strftime("%Y-%m-%dT%H:%M:%SZ"),
                              "marketId": market['marketId'],
                              "venue": e['eventVenue'],
                              "status":market['marketBook']['status'] if 'marketBook' in market and 'status' in market['marketBook'] else 'CLOSED',
                              "totalMatched": market['totalMatched'],
-                             "runners": marketBookWithRunners[mapWinToPlace[market['marketId']]] if mapWinToPlace[market['marketId']] in marketBookWithRunners and market['marketId'] in mapWinToPlace else [],
+                             "runners": marketBookWithRunners[mapWinToPlace[market['marketId']]] if market['marketId'] in mapWinToPlace and mapWinToPlace[market['marketId']] in marketBookWithRunners else [],
                              "runnersId": {runner['selectionId']: runner['sortPriority'] for runner in market['runners']}
                             } 
                             for market in markets if market["marketCatalogueDescription"]["marketType"] == marketType]

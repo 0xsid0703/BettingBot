@@ -54,6 +54,7 @@ class Race(ColManager):
         return races
     
     def getMainRaceByNum(self, date_obj, track_name, race_num):
+        if date_obj == "undefined" or track_name == "undefined" or race_num == "undefined": return []
         races = self.manager.find({
             "main_track_name": {"$regex": track_name},
             "main_race_num": {"$in": [int(race_num), str(race_num)]},
@@ -129,5 +130,70 @@ class Race(ColManager):
         self.manager.delete_many ({'home_date': datetime.datetime.strptime(date_str, "%d/%m/%Y")})
     
     def getMainRacesByDate(self, dateStr):
-        mainRaces = self.manager.find ({'date': datetime.datetime.strptime(dateStr, "%Y-%m-%d"), 'main_track_id': {'$ne': ''}, 'main_track_condition': {'$ne': ''}})
+        mainRaces = self.manager.find ({'date': datetime.datetime.strptime(dateStr, "%Y-%m-%d"), 'main_track_id': {'$ne': ''}, 'main_track_condition': {'$ne': ''}}).sort("main_race_num", 1)
         return mainRaces
+
+    def setConditionOnMainRace(self, date_obj, track_name, race_num, condition):
+        numRange = []
+        for i in range(int(race_num), 20):
+            numRange += [i, str(i)]
+        races = self.manager.find({
+            "main_track_name": {"$regex": track_name},
+            "main_race_num": {"$in": numRange},
+            "date": date_obj
+        })
+        if races is None:
+            races = self.manager.find({
+                "main_race_name": {"$regex": track_name},
+                "main_race_num": {"$in": numRange},
+                "date": date_obj
+            })
+            if races is None:
+                return {"success": False}
+            races = list(races)
+            if len(races) > 0:
+                races = self.manager.update_many({
+                    "main_track_club": {"$regex": track_name},
+                    "main_race_num": {"$in": numRange},
+                    "date": date_obj
+                },
+                {
+                    "$set": {"condition": condition}
+                })
+                return {"success": True}
+            else:
+                return {"success": False}
+        else:
+            races = list(races)
+            if len(races) > 0:
+                races = self.manager.update_many({
+                    "main_track_name": {"$regex": track_name},
+                    "main_race_num": {"$in": numRange},
+                    "date": date_obj
+                },
+                {
+                    "$set": {"condition": condition}
+                })
+                return {"success": True}
+            else:
+                races = self.manager.find({
+                    "main_track_club": {"$regex": track_name},
+                    "main_race_num": {"$in": numRange},
+                    "date": date_obj
+                })
+                if races is None:
+                    return {"success": False}
+                else:
+                    races = list(races)
+                    if len(races) > 0:
+                        races = self.manager.update_many({
+                            "main_track_club": {"$regex": track_name},
+                            "main_race_num": {"$in": numRange},
+                            "date": date_obj
+                        },
+                        {
+                            "$set": {"condition": condition}
+                        })
+                        return {"success": True}
+                    else:
+                        return {"success": False}

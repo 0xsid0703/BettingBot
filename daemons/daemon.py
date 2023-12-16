@@ -1,14 +1,17 @@
 
-import pandas as pd
 import os
 import time
 import json
 from datetime import datetime
 import threading
+
+import sys
+curDir = os.path.dirname(os.path.realpath(__file__))
+rootDir = os.path.abspath(os.path.join(curDir, os.pardir))
+sys.path.append (rootDir)
 from betfairs.trading import tradingObj
 from utils.logging import daemonLogger
-
-from feedFromXML.src.parse import buildRaceProfile, parse
+from feedFromXML.src.parse import buildRaceProfile
 
 from models.dbManager import dbManager
 
@@ -89,18 +92,17 @@ def downloadMedialityFiles():
 def main():
     connectDatabase()
 
-    # daemonSaveXMLData ()
+    daemonSaveXMLData ()
 
-    while True:
-        evt = threading.Event()
-        saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
-        # saveMarketBook = threading.Thread(target=daemonSaveMarketBook, args=(15,))
-        saveEvent.start ()
-        time.sleep (3600)
-        evt.set ()
-        print (">>>>>>>")
-        time.sleep (30)
-        # saveMarketBook.start ()
+    # while True:
+    #     evt = threading.Event()
+    #     saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
+    #     # saveMarketBook = threading.Thread(target=daemonSaveMarketBook, args=(15,))
+    #     saveEvent.start ()
+    #     time.sleep (3600)
+    #     evt.set ()
+    #     print (">>>>>>>")
+        # # time.sleep (30)
 
 if __name__ == "__main__":
     main()

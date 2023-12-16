@@ -57,21 +57,21 @@ class RaceObj(Resource):
 class RaceCardObj(Resource):
     def get(self):
         date_str = request.args.get("date")
-        track_id = request.args.get("track")
+        track_name = request.args.get("track")
         race_num = request.args.get("race")
         condition = request.args.get("condition")
         marketId = request.args.get("marketId")
-        return boardController.getRaceCardByNum (date_str, track_id, race_num, condition, marketId)
+        return boardController.getRaceCardByNum (date_str, track_name, race_num, condition, marketId)
 
 @api.route ('/getraceformbynum')
 class RaceFormObj(Resource):
     def get(self):
         date_str = request.args.get("date")
-        track_id = request.args.get("track")
+        track_name = request.args.get("track")
         race_num = request.args.get("race")
         condition = request.args.get("condition")
         marketId = request.args.get("marketId")
-        return boardController.getRaceFormByNum (date_str, track_id, race_num, condition, marketId)
+        return boardController.getRaceFormByNum (date_str, track_name, race_num, condition, marketId)
 
 @api.route ('/gethorsescores')
 class RaceScore(Resource):
@@ -81,3 +81,22 @@ class RaceScore(Resource):
         race_num = request.args.get("race")
         condition = request.args.get("condition")
         return boardController.getRaceHorseScores (date_str, track_id, race_num, condition)
+
+@api.route ('/getformscores')
+class RaceFormScore(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_id = request.args.get("track")
+        race_num = request.args.get("race")
+        condition = request.args.get("condition")
+        marketId = request.args.get("marketId")
+        return boardController.getFormScores (date_str, track_id, race_num, condition, marketId)
+    
+@api.route ('/setcondition')
+class RaceScore(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_name = request.args.get("track")
+        race_num = request.args.get("race")
+        condition = request.args.get("condition")
+        return boardController.setCondition (date_str, track_name, race_num, condition)
