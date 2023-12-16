@@ -6,7 +6,7 @@ from datetime import datetime
 DATA_DIR = "feedFromXML/data"
 FORM_DIR = "mr_form"
 FIELD_DIR = "mr_fields"
-START_DATE="27/11/2023"
+START_DATE="13/9/2023"
 
 def getHorseObj(horse_obj):
     db_obj = horse_obj.attrib
@@ -482,8 +482,12 @@ def buildRaceProfile():
                         if child.tag == "sectional":
                             sectional = child.attrib
                             if sectional['distance'] == "600":
-                                t = sectional['time'].split(":")
-                                tmp['last_600'] = float(t[1])
+                                if ':' not in sectional['time']:
+                                    t = sectional['time'].split(".")
+                                    tmp['last_600'] = (float (t[2]) * 0.1 if len(t) > 2 else 0) + (float(t[1]) if len(t) > 1 else 0) + (60 * float(t[0]) if len(t) > 0 else 0)
+                                else:
+                                    t = sectional['time'].split (":")
+                                    tmp['last_600'] = (float (t[1]) if len(t) > 1 else 0) + 60 * (float(t[0]) if len(t) > 0 else 0)
                         if child.tag == "finish_position":
                             try:
                                 tmp['finish_number'] = int(child.text)
