@@ -4,6 +4,7 @@ import time
 import json
 from datetime import datetime
 import threading
+import argparse
 
 import sys
 curDir = os.path.dirname(os.path.realpath(__file__))
@@ -90,19 +91,38 @@ def downloadMedialityFiles():
         pass
 
 def main():
-    connectDatabase()
 
-    daemonSaveXMLData ()
-
-    # while True:
-    #     evt = threading.Event()
-    #     saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
-    #     # saveMarketBook = threading.Thread(target=daemonSaveMarketBook, args=(15,))
-    #     saveEvent.start ()
-    #     time.sleep (3600)
-    #     evt.set ()
-    #     print (">>>>>>>")
-        # # time.sleep (30)
+    parser = argparse.ArgumentParser(description="Horse Racing Server")
+    parser.add_argument ("--start", help="RESP API Daemon Start")
+    parser.add_argument ("--stop", help="RESP API Daemon Stop")
+    args = parser.parse_args()
+    if args.start:
+        if args.start == "feed":
+            pid = os.fork()
+            if pid > 0:
+                connectDatabase()
+                daemonSaveXMLData ()
+                fd = open("./feed-pid", "w"); fd.write (str(os.getpid())); fd.close()
+        elif args.start == "fetch":
+            pid = os.fork()
+            if pid > 0:
+                connectDatabase()
+                fd = open("./fetch-pid", "w"); fd.write (str(os.getpid())); fd.close()
+                while True:
+                    evt = threading.Event()
+                    saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
+                    saveEvent.start ()
+                    time.sleep (3600)
+                    evt.set ()
+    
+    elif args.stop:
+        os.chdir(os.getcwd())
+        if args.stop == "feed":
+            fd = open ("./feed-pid", "r"); pid = fd.read(); fd.close()
+            fd = os.popen ("kill %s" % pid.strip(), "r"); fd.close()
+        elif args.stop == "fetch":
+            fd = open ("./fetch-pid", "r"); pid = fd.read(); fd.close()
+            fd = os.popen ("kill %s" % pid.strip(), "r"); fd.close()
 
 if __name__ == "__main__":
     main()

@@ -71,6 +71,7 @@ class Race(ColManager):
             return list(races)
         else:
             races = list(races)
+            print ("PPPPPPPPPPPPP", len(races), date_obj, track_name, race_num)
             if len(races) > 0:
                 return races
             else:

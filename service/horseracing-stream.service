@@ -1,0 +1,14 @@
+[Unit]
+Description=Horser Racing Stream Daemon
+Before=multi-user.target
+
+[Service]
+WorkingDirectory=/work/backend
+ExecStart=/usr/bin/python3 ./daemons/stream.py --start feed
+ExecStop=/usr/bin/python3 ./daemons/stream.py --stop feed
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

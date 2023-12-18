@@ -1,0 +1,14 @@
+[Unit]
+Description=Horser Racing Fetching Daemon
+Before=multi-user.target
+
+[Service]
+WorkingDirectory=/work/backend
+ExecStart=/usr/bin/python3 ./daemons/daemon.py --start fetch
+ExecStop=/usr/bin/python3 ./daemons/daemon.py --stop fetch
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

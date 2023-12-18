@@ -4,6 +4,7 @@ import threading
 import json
 import queue
 import time
+import argparse
 from datetime import datetime, timedelta
 from betfairlightweight import StreamListener
 from betfairlightweight.filters import (
@@ -44,12 +45,9 @@ def connectDatabase():
 class MarketBookCather:
     def __init__(self, markets):
         self.ids = markets
-        # self.startTimes = [market['marketStartTime'].timestamp() for market in markets]
-        # self.queue = output_queue
         processStart = multiprocessing.Process(target=self.start)
         processStart.start()
         self.pid = processStart.pid
-        # processStart.join()
     
     def start(self):
         print ("Start a market:", self.ids)
@@ -69,15 +67,12 @@ class MarketBookCather:
             )
             t = threading.Thread(target=stream.start, daemon=True)
             t.start()
-            print ("Start capture market thread...")
         except Exception as e:
             streamLogger.error("start failed.", exc_info=True)
         pass
 
         while True:
-            print ("Capture queue data started...")
             marketBooks = output_queue.get()
-            print (len(marketBooks), ">>> poped")
             
             mbs = tradingObj.convertMarketBookToData (marketBooks)
             for marketBook in mbs:
@@ -100,7 +95,6 @@ def myKillProcess(processList):
     while True:
         print (processList, "kill process started")
         while len(processList) > 0:
-        # for p in processList:
             try:
                 p = processList.pop()
                 os.kill (p, 15)
@@ -118,7 +112,6 @@ def captureMarkets(processList):
         winMarkets = []
         placeMarkets = []
         for event in events:
-            # tmp = [market['marketId'] if market['marketCatalogueDescription']['marketType'] == "WIN" for market in event['markets']]
             for market in event['markets']:
                 if market['marketCatalogueDescription']['marketType'] == "WIN":
                     # if (datetime.utcnow() - timedelta(hours=1)) <  market['marketStartTime'] and datetime.utcnow().strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
@@ -140,9 +133,6 @@ def captureMarkets(processList):
                 except ProcessLookupError:
                     print (f"Process with ID {p} not found.")
 
-            print ("capture markets started...")
-            
-            print (len(winMarkets))
             if len(winMarkets) == 0 and len(placeMarkets) == 0:
                 time.sleep (3600)
             else:
@@ -155,36 +145,31 @@ def captureMarkets(processList):
                 if len(placeMarkets) > 0:
                     pm = MarketBookCather([item[0] for item in placeMarkets])
                     processList.append (pm.pid)
-                # try:
-                #     if (winMarkets[0][1] - datetime.now()).total_seconds() > 0:
-                #         if (winMarkets[0][1] - datetime.now()).total_seconds() > 3600:
-                #             time.sleep (3600)
-                #     else:
-                #         break
-                #     print (processList, "processList >>>>")
-                # except:
-                #     pass
             time.sleep (15)
             if (datetime.now() - startLoop).total_seconds() > 18000: break
 
 def main():
-    fd = open("./1.txt", "w");fd.write("Stream running");fd.close()
-    connectDatabase()
-    with multiprocessing.Manager() as manager:
-        processList = manager.list()
-        # shared_queue = manager.Queue()
-        
-        cm = multiprocessing.Process(target=captureMarkets, args=(processList, ))
-        cm.start()
-        
-        # kp = multiprocessing.Process(target=myKillProcess, args=(processList,))
-        # kp.start()
-        
-        # gq = multiprocessing.Process(target=getQueueData, args=(shared_queue,))
-        # gq.start()
-        # kp.join()
-        cm.join()
-        # gq.join()
-    
 
-main()
+    parser = argparse.ArgumentParser(description="Horse Racing Server")
+    parser.add_argument ("--start", help="RESP API Daemon Start", action="store_true")
+    parser.add_argument ("--stop", help="RESP API Daemon Stop", action="store_true")
+    args = parser.parse_args()
+
+    if args.start:
+        # pid = os.fork()
+        # if pid > 0:
+        fd = open("./stream-pid", "w"); fd.write (str(os.getpid())); fd.close()
+        connectDatabase()
+        with multiprocessing.Manager() as manager:
+            processList = manager.list()
+            cm = multiprocessing.Process(target=captureMarkets, args=(processList, ))
+            cm.start()
+            cm.join()
+    
+    elif args.stop:
+        os.chdir(os.getcwd())
+        fd = open ("./stream-pid", "r"); pid = fd.read(); fd.close()
+        fd = os.popen ("kill %s" % pid.strip(), "r"); fd.close()
+    
+if __name__ == "__main__":
+    main()
