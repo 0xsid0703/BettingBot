@@ -1,7 +1,8 @@
 import asyncio
-import datetime
 import websockets
 import json
+import argparse
+import os
 
 from controllers.boardController import BoardController
 
@@ -10,7 +11,6 @@ boardController = BoardController()
 async def handler(websocket, path):
     try:
         message = await websocket.recv()
-        print (message, "DDDDDD")
         data = json.loads(message)
         startDate = data['startDate'] if 'startDate' in data else None
         venue = data['venue'] if 'venue' in data else None
@@ -26,7 +26,27 @@ async def handler(websocket, path):
     except Exception as e:
         pass
 
-start_server = websockets.serve(handler, "0.0.0.0", 5556)
+def main():
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+    parser = argparse.ArgumentParser(description="Horse Racing Server")
+    parser.add_argument ("--start", help="RESP API Daemon Start", action="store_true")
+    parser.add_argument ("--stop", help="RESP API Daemon Stop", action="store_true")
+    args = parser.parse_args()
+
+    if args.start:
+        pid = os.fork()
+        if pid > 0:
+            fd = open("./socket-pid", "w"); fd.write (str(os.getpid())); fd.close()
+            start_server = websockets.serve(handler, "0.0.0.0", 5556)
+            asyncio.get_event_loop().run_until_complete(start_server)
+            asyncio.get_event_loop().run_forever()
+    
+    elif args.stop:
+        os.chdir(os.getcwd())
+        fd = open ("./socket-pid", "r"); pid = fd.read(); fd.close()
+        fd = os.popen ("kill %s" % pid.strip(), "r"); fd.close()
+
+
+
+if __name__=="__main__":
+    main ()

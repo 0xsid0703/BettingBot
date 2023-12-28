@@ -82,6 +82,7 @@ class BasicController(Controller):
 
         for e in eventList:
             if e['eventId'] == 32707774: continue
+            if e['eventVenue'] == 'Sapphire Coast': continue
             e['_id'] = str(e['_id'])
             markets = e['markets']
             markets.sort (key=sortFunc)

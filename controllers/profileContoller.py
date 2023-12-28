@@ -21,13 +21,14 @@ class ProfileController(Controller):
                 for race in horse['races']:
                     race = dict(race)
                     if 'barrier' in race['class'].lower(): continue
-                    race['_id'] = str(race['_id'])
+                    race['_id'] = str(race['_id']) if '_id' in race else ''
                     race['horse_foaling_date'] = race['horse_foaling_date'].strftime("%d/%m/%y") if 'horse_foaling_date' in race else ''
                     race['date'] = race['date'].strftime("%d/%m/%y") if 'date' in race else ''
                     race['home_date'] = race['home_date'].strftime("%d/%m/%y") if 'home_date' in race else ''
                     rlt.append (race)
                 return rlt
-            except:
+            except Exception as e:
+                profileControllerLogger.error ("getRaceList() call failed.", exc_info=True)
                 return []
         
         if type == "trainer":

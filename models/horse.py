@@ -16,7 +16,7 @@ class Horse(ColManager):
         try:
             horse_count = self.manager.count_documents ({"id": race_obj['horse_id']})
             if horse_count > 0:
-                horses = self.manager.count_documents ({"id": race_obj['horse_id'], "races.track_id": race_obj['track_id']})
+                horses = self.manager.count_documents ({"id": race_obj['horse_id'], "races.event_id": race_obj['event_id'], "races.race_num": race_obj['race_num']})
 
                 if horses > 0:
                     return
