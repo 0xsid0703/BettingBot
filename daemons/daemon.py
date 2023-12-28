@@ -2,7 +2,7 @@
 import os
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import argparse
 
@@ -68,26 +68,47 @@ def daemonSaveXMLData():
     for track in tracks:
         dbManager.raceCol.saveRace (track, 1)
 
-def downloadMedialityFiles():
+def downloadAndParseMedialityFiles():
     import files_sdk
     import requests
     try:
-        with open('./config/credentials.json') as f:
-            credConfig = json.load(f)
-            appKey = credConfig['mediality_app_key']
-        files_sdk.set_api_key(appKey)
-        files = list(files_sdk.folder.list_for ("/Centaur/production-s3/kagan@icloud.com/mr_form"))
-        for fileObj in files:
-            p = fileObj.download()
-            downloadUri = p['download_uri']
-            res = requests.get (downloadUri)
-            if res.status_code == 200:
-                fileName = p['download_uri'].split ("/")[-1]
-                destinationPath = os.path.join("./feedFromXML/data/mr_form", fileName)
+        check = ''
+        while True:
+            if check == datetime.now().strftime("%Y%m%d"):
+                time.sleep(3600)
+                continue
+            check = datetime.now().strftime("%Y%m%d")
+            fd = os.popen ("sudo rm -rf ./feedFromXML/data/mr_form/*.xml"); fd.close()
 
-                with open(destinationPath, 'wb') as file:
-                    file.write(res.content)
-    except:
+            with open('./config/credentials.json') as f:
+                credConfig = json.load(f)
+                appKey = credConfig['mediality_app_key']
+            files_sdk.set_api_key(appKey)
+            files = list(files_sdk.folder.list_for ("/Centaur/production-s3/kagan@icloud.com/mr_form"))
+            for fileObj in files:
+                p = fileObj.download()
+                downloadUri = p['download_uri']
+                res = requests.get (downloadUri)
+                if res.status_code == 200:
+                    fileName = p['download_uri'].split ("/")[-1]
+                    pams = fileName.split("?")
+                    if len(pams) == 0: continue
+                    if datetime.now().strftime("%Y%m%d") not in pams[0] and (datetime.now() + timedelta(hours=24)).strftime("%Y%m%d") not in pams[0]: continue
+                    destinationPath = os.path.join("./feedFromXML/data/mr_form", pams[0])
+                    with open(destinationPath, 'wb') as file:
+                        file.write(res.content)
+            
+            races, tracks = buildRaceProfile ()
+            for track in tracks:
+                dbManager.raceCol.saveRace (track, 1)
+            for race in races:
+                dbManager.raceCol.saveRace (race)
+                dbManager.trainerCol.saveTrainer (race)
+                dbManager.jockeyCol.saveJockey (race)
+                dbManager.horseCol.saveHorse (race)
+
+    except Exception as e:
+        print (e)
         pass
 
 def main():
@@ -101,8 +122,8 @@ def main():
             pid = os.fork()
             if pid > 0:
                 connectDatabase()
-                daemonSaveXMLData ()
                 fd = open("./feed-pid", "w"); fd.write (str(os.getpid())); fd.close()
+                downloadAndParseMedialityFiles ()
         elif args.start == "fetch":
             pid = os.fork()
             if pid > 0:

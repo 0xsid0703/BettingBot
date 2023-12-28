@@ -2,7 +2,7 @@
 import betfairlightweight
 import pandas as pd
 import json
-
+from datetime import datetime
 import sys
 sys.path.append ("..")
 from utils.logging import tradingLogger
@@ -153,6 +153,7 @@ class Trading:
                     'openDate': eventObject.event.open_date if eventObject.event.open_date is not None else None, # datetime.datetime
                     'marketCount': eventObject.market_count if eventObject.market_count is not None else 0,
                     'countryCode': eventObject.event.country_code if eventObject.event.country_code is not None else '',
+                    'updateDate': datetime.utcnow(),
                     'markets': []
                 }
 

@@ -71,7 +71,6 @@ class Race(ColManager):
             return list(races)
         else:
             races = list(races)
-            print ("PPPPPPPPPPPPP", len(races), date_obj, track_name, race_num)
             if len(races) > 0:
                 return races
             else:
@@ -96,7 +95,15 @@ class Race(ColManager):
         if horse_id is not None:
             match['horse_id'] = {"$in": [int(horse_id), str(horse_id)]}
         races = self.manager.find(match).sort("date", -1)
-        return list(races)
+        races = list(races)
+        if len(races) == 0:
+            del match['home_track_name']
+            match['home_track_club'] = {"$regex": track_name}
+            races = self.manager.find(match).sort("date", -1)
+            races = list(races)
+            return races
+        else:
+            return races
     
     def getRacesByJockeyId(self, date_obj, track_name, race_num, jockey_id):
         match = {}

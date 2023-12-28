@@ -406,7 +406,6 @@ class BoardController(Controller):
     def getRaceCardByNum(self, dateStr, trackName, raceNum, condition, marketId):
         jockeyNames = self.getJockeyNames (marketId)
         races = dbManager.raceCol.getMainRaceByNum(datetime.strptime(dateStr, "%Y-%m-%d"), trackName, raceNum)
-        print (len(races), "RRRRRR")
         if races is None or (races is not None and len(list(races)) == 0):
             return None
 

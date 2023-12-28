@@ -403,6 +403,7 @@ def buildRaceProfile():
                     tmp['home_track_id'] = homeTrackAttrib['id'] if 'id' in homeTrackAttrib else ''
                     tmp['home_track_surface'] = homeTrackAttrib['track_surface'] if 'track_surface' in homeTrackAttrib else ''
                     tmp['home_track_3char_abbrev'] = homeTrackAttrib['track_3char_abbrev'] if 'track_3char_abbrev' in homeTrackAttrib else ''
+                    tmp['home_track_club'] = homeTrackAttrib['club'] if 'club' in homeTrackAttrib else ''
                     tmp['home_track_condition'] = homeTrackAttrib['expected_condition'] if 'expected_condition' in homeTrackAttrib else ''
                     tmp['home_track_country'] = homeTrackAttrib['country'] if 'country' in homeTrackAttrib else ''
 
@@ -448,7 +449,10 @@ def buildRaceProfile():
                         if child.tag == "jockey":
                             jockey = child.attrib
                             tmp['jockey_name'] = jockey['name']
-                            tmp['jockey_id'] = int(jockey['id'])
+                            try:
+                                tmp['jockey_id'] = int(jockey['id']) if 'id' in jockey else -1
+                            except:
+                                tmp['jockey_id'] = -1
                         if child.tag == 'track':
                             track = child.attrib
                             tmp['track_name'] = track['name'].upper()

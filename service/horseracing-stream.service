@@ -4,8 +4,8 @@ Before=multi-user.target
 
 [Service]
 WorkingDirectory=/work/backend
-ExecStart=/usr/bin/python3 ./daemons/stream.py --start feed
-ExecStop=/usr/bin/python3 ./daemons/stream.py --stop feed
+ExecStart=/usr/bin/python3 ./daemons/stream.py --start
+ExecStop=/usr/bin/python3 ./daemons/stream.py --stop
 Type=simple
 Restart=always
 
