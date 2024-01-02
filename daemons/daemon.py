@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta
 import threading
 import argparse
+import multiprocessing
 
 import sys
 curDir = os.path.dirname(os.path.realpath(__file__))
@@ -38,9 +39,10 @@ def connectDatabase():
         daemonLogger.error("config/db.json file read failed.", exc_info=True)
         return
 
-def daemonSaveEvent(interval, event):
+# def daemonSaveEvent(interval, event):
+def daemonSaveEvent(interval):
     while True:
-        if event.is_set(): break
+        # if event.is_set(): break
         events = tradingObj.getEvents(['au', 'sg', 'nz'], [7])
         dbManager.eventCol.saveList (events)
         time.sleep(interval)
@@ -130,11 +132,19 @@ def main():
                 connectDatabase()
                 fd = open("./fetch-pid", "w"); fd.write (str(os.getpid())); fd.close()
                 while True:
-                    evt = threading.Event()
-                    saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
-                    saveEvent.start ()
-                    time.sleep (3600)
-                    evt.set ()
+                    if datetime.now().hour in [22,23,0,1,2,3,4,5,6,7,8,9,10,11,12]:
+                        saveEvent = multiprocessing.Process(target=daemonSaveEvent, args=(15,))
+                        # evt = threading.Event()
+                        # saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
+                        saveEvent.start ()
+                        time.sleep (900)
+                        os.kill (saveEvent.pid, 15)
+                        print ("#######")
+                        time.sleep (30)
+                    else:
+                        print ("$$$$$$$")
+                        time.sleep (900)
+                    # evt.set ()
     
     elif args.stop:
         os.chdir(os.getcwd())
