@@ -17,8 +17,6 @@ from feedFromXML.src.parse import buildRaceProfile
 
 from models.dbManager import dbManager
 
-fd = open("./1.txt", "w"); fd.write("running"); fd.close()
-
 def connectDatabase():
     from mongoengine import connect
     try:
@@ -132,7 +130,7 @@ def main():
                 connectDatabase()
                 fd = open("./fetch-pid", "w"); fd.write (str(os.getpid())); fd.close()
                 while True:
-                    if datetime.now().hour in [22,23,0,1,2,3,4,5,6,7,8,9,10,11,12]:
+                    # if datetime.now().hour in [22,23,0,1,2,3,4,5,6,7,8,9,10,11,12]:
                         saveEvent = multiprocessing.Process(target=daemonSaveEvent, args=(15,))
                         # evt = threading.Event()
                         # saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
@@ -141,11 +139,11 @@ def main():
                         os.kill (saveEvent.pid, 15)
                         print ("#######")
                         time.sleep (30)
-                    else:
-                        print ("$$$$$$$")
-                        time.sleep (900)
+                    # else:
+                    #     print ("$$$$$$$")
+                    #     time.sleep (900)
                     # evt.set ()
-    
+
     elif args.stop:
         os.chdir(os.getcwd())
         if args.stop == "feed":

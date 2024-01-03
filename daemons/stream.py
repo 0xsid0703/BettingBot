@@ -151,7 +151,7 @@ def captureMarkets(processList):
                             processList.append (pm.pid)
                     time.sleep (15)
                     if (datetime.now() - startLoop).total_seconds() > 3600: break
-                    if datetime.now().hour not in [22,23,0,1,2,3,4,5,6,7,8,9,10,11,12]:
+                    if datetime.now().hour not in [22,23,0,1,2,3,4,5,6,7,8,9,10,11]:
                         while len(processList) > 0:
                             try:
                                 p = processList.pop()
