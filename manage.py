@@ -27,7 +27,7 @@ def main():
                 print ("Manage daemon start -----")
                 fd = os.popen ("sudo systemctl start horseracing-fetch"); fd.close()
                 fd = os.popen ("sudo systemctl start horseracing-stream"); fd.close()
-                time.sleep (3600)
+                time.sleep (10800)
             else:
                 try:
                     fd = os.popen ("sudo systemctl stop horseracing-fetch"); fd.close()
