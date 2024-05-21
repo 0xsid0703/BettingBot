@@ -8,6 +8,7 @@ from .jockey import Jockey
 from .race import Race
 from .marketBook import MarketBook
 from .marketIds import MarketIds
+from .StatisticalWeights import StatisticalWeights
 
 import sys
 sys.path.append ("..")
@@ -35,6 +36,7 @@ class DbManager:
                 self.raceCol = Race(self.database)
                 self.marketBookCol = MarketBook(self.database)
                 self.marketIdsCol = MarketIds (self.database)
+                self.statisticalWeightsCol = StatisticalWeights (self.database)
             except Exception as e:
                 dbLogger.error(f"Database connection failed.", exc_info=True)
                 return

@@ -58,6 +58,7 @@ class BasicController(Controller):
         return self.getEventsFilterByType(eList, marketType)
 
     def getEventsFilterByType(self, eventList, marketType, condition={}):
+        # print("==>>>>=eList=",eventList[0])
         data = []
         marketIds = []
         trackNames = list(condition.keys())
@@ -104,10 +105,15 @@ class BasicController(Controller):
                              "status":market['marketBook']['status'] if 'marketBook' in market and 'status' in market['marketBook'] else 'CLOSED',
                              "totalMatched": market['totalMatched'],
                              "runners": marketBookWithRunners[mapWinToPlace[market['marketId']]] if market['marketId'] in mapWinToPlace and mapWinToPlace[market['marketId']] in marketBookWithRunners else [],
-                             "runnersId": {runner['selectionId']: runner['sortPriority'] for runner in market['runners']}
+                             "runnersId": {runner['selectionId']: runner['sortPriority'] for runner in market['runners']},
+                             "marketType": market["marketCatalogueDescription"]['marketType']
                             } 
                             for market in markets if market["marketCatalogueDescription"]["marketType"] == marketType]
             }
+            
+            
+            
+            if(tmp['condition'] == ''): tmp['condition'] = 'GOOD'
             
             data.append (tmp)
         

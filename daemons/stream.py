@@ -115,11 +115,9 @@ def captureMarkets(processList):
             for event in events:
                 for market in event['markets']:
                     if market['marketCatalogueDescription']['marketType'] == "WIN":
-                        # if (datetime.utcnow() - timedelta(hours=1)) <  market['marketStartTime'] and datetime.utcnow().strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
                         if (datetime.utcnow() + timedelta(hours=10)).strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
                             winMarkets.append ([market['marketId'], market['marketStartTime']])
                     if market['marketCatalogueDescription']['marketType'] == "PLACE":
-                        # if (datetime.utcnow() - timedelta(hours=1)) <  market['marketStartTime'] and datetime.utcnow().strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
                         if (datetime.utcnow() + timedelta(hours=10)).strftime("%Y-%m-%d") == (market['marketStartTime'] + timedelta(hours=10)).strftime("%Y-%m-%d"):
                             placeMarkets.append ([market['marketId'], market['marketStartTime']])
             startLoop = datetime.now()
@@ -150,15 +148,15 @@ def captureMarkets(processList):
                         processList.append (pm.pid)
                 time.sleep (15)
                 if (datetime.now() - startLoop).total_seconds() > 18000: break
-                if datetime.now().hour not in [22,23,0,1,2,3,4,5,6,7,8,9,10,11]:
-                    while len(processList) > 0:
-                        try:
-                            p = processList.pop()
-                            print ("Kill process in captureMarkets: %d" % p)
-                            os.kill (p, 15)
-                        except ProcessLookupError:
-                            print (f"Process with ID {p} not found.")
-                    break
+                # if datetime.now().hour not in [22,23,0,1,2,3,4,5,6,7,8,9,10,11]:
+                while len(processList) > 0:
+                    try:
+                        p = processList.pop()
+                        print ("Kill process in captureMarkets: %d" % p)
+                        os.kill (p, 15)
+                    except ProcessLookupError:
+                        print (f"Process with ID {p} not found.")
+                break
         else:
             print ("$$$$$$$")
             time.sleep(60)

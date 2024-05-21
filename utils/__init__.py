@@ -109,4 +109,4 @@ def getClassPoint(classStr):
     if classStr in list(CLASSES.keys()):
         return CLASSES[classStr]
     else:
-        return 0
+        return 1

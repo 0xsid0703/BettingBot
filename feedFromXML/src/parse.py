@@ -193,6 +193,8 @@ def buildRaceProfile():
 
     rlt = []
     btracks = []
+    satisticalWeightsArray = []
+    # print (len (form_file_list), "ssssssss")
     for form_file in form_file_list:
         tree = ET.parse(os.path.join(form_file_dir, form_file))
         root = tree.getroot()
@@ -204,7 +206,7 @@ def buildRaceProfile():
         dateObj = root.find("date")
         trackDate = datetime.strptime(dateObj.text, "%d/%m/%Y")
         if START_DATE is not None and trackDate < datetime.strptime(START_DATE, "%d/%m/%Y"): continue
-        print (trackDate)
+        # print (trackDate)
 
         races = root.find("races")
         if races is None: continue
@@ -213,6 +215,27 @@ def buildRaceProfile():
         if races  is None: continue
         if len(races) == 0: continue
         for race in races:
+            tmpStatisticalWeight = {}
+            tmpStatisticalWeight['home_date'] = datetime.strptime(dateObj.text, "%d/%m/%Y")
+            tmpStatisticalWeight['home_track_name'] = homeTrackAttrib['name'] if 'name' in homeTrackAttrib else ''
+            tmpStatisticalWeight['race_num'] = race.attrib['number']
+            tmpStatisticalWeight['horse_barrier'] = 0
+            tmpStatisticalWeight['weight'] = 1
+            tmpStatisticalWeight['class'] = 0
+            tmpStatisticalWeight['average'] = 0.5
+            tmpStatisticalWeight['finishPercent'] = 1
+            tmpStatisticalWeight['winPercent'] = 0
+            tmpStatisticalWeight['placePercent'] = 0
+            tmpStatisticalWeight['condition'] = 0.5
+            tmpStatisticalWeight['track'] = 0.5
+            tmpStatisticalWeight['distance'] = 0.5
+            tmpStatisticalWeight['jockey'] = 0.5
+            tmpStatisticalWeight['trainer'] = 0.5
+            tmpStatisticalWeight['settling'] = 0.5
+            tmpStatisticalWeight['last_600'] = 0.5
+            tmpStatisticalWeight['speed'] = 1
+            tmpStatisticalWeight['lastFn'] = 0.5
+            tmpStatisticalWeight['lastMgn'] = 0.5
             
             # raceRestriction = race.find ("restrictions")
             # if raceRestriction is not None:
@@ -237,9 +260,13 @@ def buildRaceProfile():
             horses = race.find("horses")
             if horses is None: continue
             horses = horses.findall("horse")
+            horse_cnt = len(horses)
             if len(horses) == 0: continue
 
             # tmpHorses = []
+            horse_condition_num = 0
+            horse_distance_num = 0
+            horse_trace_num = 0
 
             for horse in horses:
                 tmpRace = {}
@@ -269,7 +296,10 @@ def buildRaceProfile():
                 if racePrizes is not None:
                     tmpRace['prizes'] = []
                     for prize in racePrizes:
-                        tmpRace['prizes'].append ({prize.attrib['type']: int(prize.attrib['value'])})
+                        try:
+                            tmpRace['prizes'].append ({prize.attrib['type']: int(prize.attrib['value'])})
+                        except:
+                            tmpRace['prizes'].append ({prize.attrib['type']: 0})
 
                 horseAttrib = horse.attrib
 
@@ -279,6 +309,7 @@ def buildRaceProfile():
                 tmpRace['horse_colour'] = horseAttrib['colour'] if 'colour' in horseAttrib else ''
                 tmpRace['horse_sex'] = horseAttrib['sex'] if 'sex' in horseAttrib else ''
                 tmpRace['horse_id'] = horseAttrib['id'] if 'id' in horseAttrib else ''
+                tmpRace['status'] = "OPEN"
 
                 trainer = horse.find('trainer')
                 trainerAttrib = trainer.attrib
@@ -336,12 +367,18 @@ def buildRaceProfile():
                 tmpRace['main_trainer_name'] = trainerAttrib['name'] if 'name' in trainerAttrib else ''
                 tmpRace['main_trainer_firstname'] = trainerAttrib['firstname'] if 'firstname' in trainerAttrib else ''
                 tmpRace['main_trainer_surname'] = trainerAttrib['surname'] if 'surname' in trainerAttrib else ''
-                tmpRace['main_trainer_id'] = int(trainerAttrib['id']) if 'id' in trainerAttrib else -1
+                try:
+                    tmpRace['main_trainer_id'] = int(trainerAttrib['id']) if 'id' in trainerAttrib else -1
+                except:
+                    tmpRace['main_trainer_id'] = -1
 
                 tmpRace['main_jockey_name'] = jockeyAttrib['name'] if 'name' in jockeyAttrib else ''
                 tmpRace['main_jockey_firstname'] = jockeyAttrib['firstname'] if 'firstname' in jockeyAttrib else ''
                 tmpRace['main_jockey_surname'] = jockeyAttrib['surname'] if 'surname' in jockeyAttrib else ''
-                tmpRace['main_jockey_id'] = int(jockeyAttrib['id']) if 'id' in jockeyAttrib else -1
+                try:
+                    tmpRace['main_jockey_id'] = int(jockeyAttrib['id']) if 'id' in jockeyAttrib else -1
+                except:
+                    tmpRace['main_jockey_id'] = -1
                 tmpRace['main_jockey_riding_weight'] = float(jockeyAttrib['riding_weight']) if 'riding_weight' in jockeyAttrib and  len(jockeyAttrib['riding_weight'].strip()) > 0 else -1
                 tmpRace['main_jockey_apprentice_indicator'] = jockeyAttrib['apprentice_indicator'] if 'apprentice_indicator' in jockeyAttrib else ''
                 tmpRace['main_jockey_allowance_weight'] = float(jockeyAttrib['allowance_weight']) if 'allowance_weight' in jockeyAttrib else 0
@@ -349,16 +386,21 @@ def buildRaceProfile():
 
                 tmpRace['win_percentage'] = float(win_p.text) if win_p is not None else 0
                 tmpRace['place_percentage'] = float(place_p.text) if place_p is not None else 0
-                tmpRace['tab_no'] = int(horseTabNo.text) if horseTabNo is not None else 0
+                try:
+                    tmpRace['tab_no'] = int(horseTabNo.text) if horseTabNo is not None else 0
+                except:
+                    tmpRace['tab_no'] = 0
                 tmpRace['current_blinker_ind'] = horseCurrentBlinkerInd.text if horseCurrentBlinkerInd is not None else 'N'
 
                 tmpRace['gear_change'] = []
-                for gearChange in horseGearChanges:
-                    tmpRace['gear_change'].append (gearChange.attrib)
-                
+                if horseGearChanges is not None:
+                    for gearChange in horseGearChanges:
+                        tmpRace['gear_change'].append (gearChange.attrib)
+
                 tmpRace['running_gear'] = []
-                for gearItem in horseRunningGear:
-                    tmpRace['running_gear'].append (gearItem.text)
+                if horseRunningGear is not None:
+                    for gearItem in horseRunningGear:
+                        tmpRace['running_gear'].append (gearItem.text)
 
                 # tmpHorse['prize_money'] = horsePrizeMoney.text if horsePrizeMoney is not None else 0
                 # tmpHorse['last_four_starts'] = horseLastFourStarts.text if horseLastFourStarts is not None else ''
@@ -383,20 +425,37 @@ def buildRaceProfile():
                 # for win_distance in horseWinDistances:
                 #     tmpHorse['win_distances'].append ({"distance": win_distance.attrib['distance'], "wins": win_distance.attrib['wins']})
                 # tmpHorses.append (tmpHorse)
-                btracks.append (tmpRace)
-
+                
                 forms = horse.find("forms")
-                if forms is None: continue
+                if forms is None: 
+                    tmpRace['horseRaces'] = []
+                    btracks.append (tmpRace)
+                    continue
                 forms = forms.findall("form")
-                if len(forms) == 0: continue
+                if len(forms) == 0:
+                    tmpRace['horseRaces'] = []
+                    btracks.append (tmpRace)
+                    continue
+                condition_sum_Cnt = 0
+                track_sum_count = 0
+                distance_sum_cnt = 0
+                form_cnt = 0
+
+                horseRaces = []
                 for form in forms:
                     tmp = {}
                     tmp['horse_name'] = horseAttrib['name'] if 'name' in horseAttrib else ''
                     tmp['horse_country'] = horseAttrib['country'] if 'country' in horseAttrib else ''
-                    tmp['horse_age'] = int(horseAttrib['age']) if 'age' in horseAttrib else -1
+                    try:
+                        tmp['horse_age'] = int(horseAttrib['age']) if 'age' in horseAttrib else -1
+                    except:
+                        tmp['horse_age'] = -1
                     tmp['horse_colour'] = horseAttrib['colour'] if 'colour' in horseAttrib else ''
                     tmp['horse_sex'] = horseAttrib['sex'] if 'sex' in horseAttrib else ''
-                    tmp['horse_id'] = int(horseAttrib['id']) if 'id' in horseAttrib else -1
+                    try:
+                        tmp['horse_id'] = int(horseAttrib['id']) if 'id' in horseAttrib else -1
+                    except:
+                        tmp['horse_id'] = -1
                     tmp['horse_foaling_date'] = datetime.strptime(horseAttrib['foaling_date'], "%d/%m/%Y") if 'foaling_date' in horseAttrib else None
 
                     tmp['home_track_name'] = homeTrackAttrib['name'] if 'name' in homeTrackAttrib else ''
@@ -415,11 +474,17 @@ def buildRaceProfile():
                     
                     tmp['sire_name'] = sireAttrib['name'] if 'name' in sireAttrib else ''
                     tmp['sire_country'] = sireAttrib['country'] if 'country' in sireAttrib else ''
-                    tmp['sire_id'] = int(sireAttrib['id']) if 'id' in sireAttrib else ''
+                    try:
+                        tmp['sire_id'] = int(sireAttrib['id']) if 'id' in sireAttrib else ''
+                    except:
+                        tmp['sire_id'] = ''
 
                     tmp['dam_name'] = damAttrib['name'] if 'name' in damAttrib else ''
                     tmp['dam_country'] = damAttrib['country'] if 'country' in damAttrib else ''
-                    tmp['dam_id'] = int(damAttrib['id']) if 'id' in damAttrib else ''
+                    try:
+                        tmp['dam_id'] = int(damAttrib['id']) if 'id' in damAttrib else ''
+                    except:
+                        tmp['dam_id'] = ''
 
                     tmp['sire_dam_name'] = sireDamAttrib['name'] if 'name' in sireDamAttrib else ''
                     tmp['sire_dam_country'] = sireDamAttrib['country'] if 'country' in sireDamAttrib else ''
@@ -428,12 +493,18 @@ def buildRaceProfile():
                     tmp['trainer_name'] = trainerAttrib['name'] if 'name' in horseAttrib else ''
                     tmp['trainer_firstname'] = trainerAttrib['firstname'] if 'firstname' in horseAttrib else ''
                     tmp['trainer_surname'] = trainerAttrib['surname'] if 'surname' in horseAttrib else ''
-                    tmp['trainer_id'] = int(trainerAttrib['id']) if 'id' in horseAttrib else -1
+                    try:
+                        tmp['trainer_id'] = int(trainerAttrib['id']) if 'id' in horseAttrib else -1
+                    except:
+                        tmp['trainer_id'] = -1
 
                     tmp['jockey_name'] = jockeyAttrib['name'] if 'name' in jockeyAttrib else ''
                     tmp['jockey_firstname'] = jockeyAttrib['firstname'] if 'firstname' in jockeyAttrib else ''
                     tmp['jockey_surname'] = jockeyAttrib['surname'] if 'surname' in jockeyAttrib else ''
-                    tmp['jockey_id'] = int(jockeyAttrib['id']) if 'id' in jockeyAttrib else -1
+                    try:
+                        tmp['jockey_id'] = int(jockeyAttrib['id']) if 'id' in jockeyAttrib else -1
+                    except:
+                        tmp['jockey_id'] = -1
                     tmp['jockey_riding_weight'] = float(jockeyAttrib['riding_weight']) if 'riding_weight' in jockeyAttrib and  len(jockeyAttrib['riding_weight'].strip()) > 0 else -1
                     tmp['jockey_apprentice_indicator'] = jockeyAttrib['apprentice_indicator'] if 'apprentice_indicator' in jockeyAttrib else ''
 
@@ -445,7 +516,11 @@ def buildRaceProfile():
                     if form.getchildren() is None: continue
                     for child in form.getchildren():
                         if child.tag == "meeting_date": tmp['date'] = datetime.strptime(child.text, "%d/%m/%Y")
-                        if child.tag == "event_id": tmp['event_id'] = int(child.text)
+                        if child.tag == "event_id":
+                            try:
+                                tmp['event_id'] = int(child.text)
+                            except:
+                                pass
                         if child.tag == "jockey":
                             jockey = child.attrib
                             tmp['jockey_name'] = jockey['name']
@@ -456,7 +531,10 @@ def buildRaceProfile():
                         if child.tag == 'track':
                             track = child.attrib
                             tmp['track_name'] = track['name'].upper()
-                            tmp['track_id'] = int(track['id'])
+                            try:
+                                tmp['track_id'] = int(track['id'])
+                            except:
+                                pass
                             tmp['track_location'] = track['location']
                             tmp['track_condition'] = track['condition']
                             try:
@@ -472,26 +550,47 @@ def buildRaceProfile():
                             tmp['race_num'] = form_race['number']
                             tmp['race_name'] = form_race['name']
                         if child.tag == "starters":
-                            tmp['starters'] = int(child.text)
+                            try:
+                                tmp['starters'] = int(child.text)
+                            except:
+                                pass
                         if child.tag == "barrier":
-                            tmp['barrier'] = int(child.text)
+                            try:
+                                tmp['barrier'] = int(child.text)
+                            except:
+                                pass
                         if child.tag == "weight_carried":
-                            tmp['weight'] = float(child.text)
+                            try:
+                                tmp['weight'] = float(child.text)
+                            except:
+                                pass
                         if child.tag == "positions":
                             positions = child.attrib
-                            tmp['settling'] = int(positions['settling_down']) if 'settling_down' in positions else -1
+                            try:
+                                tmp['settling'] = int(positions['settling_down']) if 'settling_down' in positions else -1
+                            except:
+                                tmp['settling'] = -1
                         if child.tag == "distance":
                             distance = child.attrib
-                            tmp['distance'] = int(distance['metres'])
+                            try:
+                                tmp['distance'] = int(distance['metres'])
+                            except:
+                                pass
                         if child.tag == "sectional":
                             sectional = child.attrib
                             if sectional['distance'] == "600":
                                 if ':' not in sectional['time']:
                                     t = sectional['time'].split(".")
-                                    tmp['last_600'] = (float (t[2]) * 0.1 if len(t) > 2 else 0) + (float(t[1]) if len(t) > 1 else 0) + (60 * float(t[0]) if len(t) > 0 else 0)
+                                    try:
+                                        tmp['last_600'] = (float (t[2]) * 0.1 if len(t) > 2 else 0) + (float(t[1]) if len(t) > 1 else 0) + (60 * float(t[0]) if len(t) > 0 else 0)
+                                    except:
+                                        tmp['last_600'] = 0
                                 else:
                                     t = sectional['time'].split (":")
-                                    tmp['last_600'] = (float (t[1]) if len(t) > 1 else 0) + 60 * (float(t[0]) if len(t) > 0 else 0)
+                                    try:
+                                        tmp['last_600'] = (float (t[1]) if len(t) > 1 else 0) + 60 * (float(t[0]) if len(t) > 0 else 0)
+                                    except:
+                                        tmp['last_600'] = 0
                         if child.tag == "finish_position":
                             try:
                                 tmp['finish_number'] = int(child.text)
@@ -505,21 +604,41 @@ def buildRaceProfile():
                         if child.tag == "event_duration":
                             if ':' not in child.text:
                                 t = child.text.split(".")
-                                tmp['time'] = (float (t[2]) * 0.1 if len(t) > 2 else 0) + (float(t[1]) if len(t) > 1 else 0) + (60 * float(t[0]) if len(t) > 0 else 0)
+                                try:
+                                    tmp['time'] = (float (t[2]) * 0.1 if len(t) > 2 else 0) + (float(t[1]) if len(t) > 1 else 0) + (60 * float(t[0]) if len(t) > 0 else 0)
+                                except:
+                                    tmp['time'] = 0
                             else:
                                 t = child.text.split (":")
-                                tmp['time'] = (float (t[1]) if len(t) > 1 else 0) + 60 * (float(t[0]) if len(t) > 0 else 0)
+                                try:
+                                    tmp['time'] = (float (t[1]) if len(t) > 1 else 0) + 60 * (float(t[0]) if len(t) > 0 else 0)
+                                except:
+                                    tmp['time'] = 0
                         if child.tag == "event_prizemoney":
-                            tmp['prizemoney_won'] = float(child.text)
+                            try:
+                                tmp['prizemoney_won'] = float(child.text)
+                            except:
+                                pass
                         if child.tag == "horse_prizemoney":
-                            tmp['horse_prizemoney'] = float(child.text) if child.text is not None else -1
+                            try:
+                                tmp['horse_prizemoney'] = float(child.text) if child.text is not None else -1
+                            except:
+                                pass
                         if child.tag == "horse_prizemoney_bonus":
-                            tmp['horse_prizemoney_bonus'] = float(child.text) if child.text is not None else -1
+                            try:
+                                tmp['horse_prizemoney_bonus'] = float(child.text) if child.text is not None else -1
+                            except:
+                                pass
                         if child.tag == "classes":
                             classId = child.find("class_id")
                             className = child.find("class")
-                            tmp['class_id'] = int(classId.text) if classId is not None else -1
+                            try:
+                                tmp['class_id'] = int(classId.text) if classId is not None else -1
+                            except:
+                                pass
                             tmp['class'] = className.text if className is not None else ''
+                            
+                        
                     
                     if 'starters' in tmp and 'settling' in tmp:
                         if tmp['settling'] > 0:
@@ -540,13 +659,49 @@ def buildRaceProfile():
                             tmp['time'] = float("{:.2f}".format((tmp['distance'] + tmp['margin'] * 2.4) * tmp['time'] /tmp['distance']))
                             tmp['speed'] = float("{:.2f}".format(tmp['distance'] / tmp['time']))
 
+                    
+                    # if(tmp['track_name'].upper() == tmpRace['main_track_name'].upper()):
+                    #     if 'finish_percentage' in tmp and tmp['finish_percentage'] > 0:
+                    #         track_sum_count += 1
+
+                    # if(tmp['track_condition'] == tmpRace['main_track_condition']): 
+                    #     if 'finish_percentage' in tmp and tmp['finish_percentage'] > 0:
+                    #         condition_sum_Cnt += 1
+
+                    # if(tmp['distance'] == int(tmpRace['distance'])): 
+                    #     if 'finish_percentage' in tmp and tmp['finish_percentage'] > 0:
+                    #         distance_sum_cnt += 1    
+                    
+
                     rlt.append (tmp)
+                    horseRaces.append (tmp)
+                
+                
+                tmpRace['horseRaces'] = horseRaces
+                btracks.append (tmpRace)
+            # print("tmpRace['main_track_name'] = ",tmpRace['main_track_name'],race.attrib['number'])
+            # print("condition_sum_Cnt = ",condition_sum_Cnt,horse_cnt)
+            # print("horse_distance_num = ",horse_distance_num,horse_cnt)
+            # print("track_sum_count = ",track_sum_count,horse_cnt)
+            # if( condition_sum_Cnt > horse_cnt / 2) : 
+            #     tmpStatisticalWeight["condition"] = 0.5
+            # else: 
+            #     tmpStatisticalWeight["condition"] = 0
+            # if( horse_distance_num > horse_cnt / 2) : 
+            #     tmpStatisticalWeight["distance"] = 0.5
+            # else: tmpStatisticalWeight["distance"] = 0
+            # if( track_sum_count > horse_cnt / 2) : 
+            #     tmpStatisticalWeight["track"] = 0.5
+            # else: 
+            #     tmpStatisticalWeight["track"] = 0
+            # statistical weights seting
+            satisticalWeightsArray.append (tmpStatisticalWeight)
             # tmpRace['horses'] = tmpHorses
             # btracks.append (tmpRace)
             # break
         # for horse in horses:
 
         # break
-    return rlt, btracks
+    return rlt, btracks, satisticalWeightsArray
 # if __name__ == "__main__":
 #     main()

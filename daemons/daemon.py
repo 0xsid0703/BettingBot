@@ -88,27 +88,32 @@ def downloadAndParseMedialityFiles():
             for fileObj in files:
                 p = fileObj.download()
                 downloadUri = p['download_uri']
+                fileName = p['download_uri'].split ("/")[-1]
+                pams = fileName.split("?")
+                if len(pams) == 0: continue
+                if datetime.now().strftime("%Y%m%d") not in pams[0] and (datetime.now() + timedelta(hours=24)).strftime("%Y%m%d") not in pams[0]: continue
                 res = requests.get (downloadUri)
                 if res.status_code == 200:
-                    fileName = p['download_uri'].split ("/")[-1]
-                    pams = fileName.split("?")
-                    if len(pams) == 0: continue
-                    if datetime.now().strftime("%Y%m%d") not in pams[0] and (datetime.now() + timedelta(hours=24)).strftime("%Y%m%d") not in pams[0]: continue
+                    # fileName = p['download_uri'].split ("/")[-1]
+                    # pams = fileName.split("?")
+                    # if len(pams) == 0: continue
+                    # if datetime.now().strftime("%Y%m%d") not in pams[0] and (datetime.now() + timedelta(hours=24)).strftime("%Y%m%d") not in pams[0]: continue
                     destinationPath = os.path.join("./feedFromXML/data/mr_form", pams[0])
                     with open(destinationPath, 'wb') as file:
                         file.write(res.content)
-            
-            races, tracks = buildRaceProfile ()
+            races, tracks, satisticalWeightsArray = buildRaceProfile ()
+            # races, tracks = buildRaceProfile ()
             for track in tracks:
                 dbManager.raceCol.saveRace (track, 1)
+                dbManager.horseCol.saveHorse (track)
             for race in races:
                 dbManager.raceCol.saveRace (race)
                 dbManager.trainerCol.saveTrainer (race)
                 dbManager.jockeyCol.saveJockey (race)
-                dbManager.horseCol.saveHorse (race)
-
+                # dbManager.horseCol.saveHorse (race)
+            for satisticalWeight in satisticalWeightsArray:
+                dbManager.statisticalWeightsCol.saveStatisticalWeights(satisticalWeight)
     except Exception as e:
-        print (e)
         pass
 
 def main():

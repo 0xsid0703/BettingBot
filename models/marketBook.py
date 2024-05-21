@@ -46,7 +46,8 @@ class MarketBook(ColManager):
             #     return
             # else:
             #     self.manager.insert_one (mb)
-        except:
+        except Exception as e:
+            print (e, "KKK")
             marketBookLogger.error ("saveBook() call failed", exc_info=True)
     
     def getDocumentsByID(self, market_id, match={}):

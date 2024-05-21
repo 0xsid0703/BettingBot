@@ -13,6 +13,7 @@ class Race(ColManager):
     
     def saveRace(self, race_obj, type = 0):
         try:
+            race_obj['horseRaces'] = {}
             if type == 0:
                 cnt = self.manager.count_documents ({
                     "home_date":race_obj['home_date'],
@@ -29,8 +30,10 @@ class Race(ColManager):
                     )
                 else:
                     self.manager.insert_one (race_obj)
+                    print('======>>>>>=insert_one_home_date============')
             elif type == 1:
                 cnt = self.manager.count_documents ({"date":race_obj['date'], "main_race_num": race_obj['main_race_num'], "main_track_id": race_obj['main_track_id'], "horse_id": race_obj['horse_id']})
+                print (race_obj['horse_name'], cnt)
                 if cnt > 0:
                     self.manager.update_many(
                         {"date":race_obj['date'], "main_race_num": race_obj['main_race_num'], "main_track_id": race_obj['main_track_id'], "horse_id": race_obj['horse_id']},
@@ -205,3 +208,4 @@ class Race(ColManager):
                         return {"success": True}
                     else:
                         return {"success": False}
+    

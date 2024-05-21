@@ -62,6 +62,16 @@ class RaceCardObj(Resource):
         condition = request.args.get("condition")
         marketId = request.args.get("marketId")
         return boardController.getRaceCardByNum (date_str, track_name, race_num, condition, marketId)
+    
+@api.route ('/getracemarketbynum')
+class RaceCardObj(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_name = request.args.get("track")
+        race_num = request.args.get("race")
+        condition = request.args.get("condition")
+        marketId = request.args.get("marketId")
+        return boardController.getRaceMarketsByNum (date_str, track_name, race_num, condition, marketId)
 
 @api.route ('/getraceformbynum')
 class RaceFormObj(Resource):
@@ -100,3 +110,23 @@ class RaceScore(Resource):
         race_num = request.args.get("race")
         condition = request.args.get("condition")
         return boardController.setCondition (date_str, track_name, race_num, condition)
+    
+@api.route ('/getstatisticalWeights')
+class StatisticalWeights(Resource):
+    def get(self):
+        date_str = request.args.get("date")
+        track_name = request.args.get("track_name")
+        race_num = request.args.get("race_num")
+        return boardController.getStatisticalWeights (date_str, track_name, race_num)
+    
+@api.route ('/update_statistical_weight', methods=['PUT'])
+class updateStatisticalWeight(Resource):
+    def put(self):
+        reqJsonData = request.json
+        home_date = reqJsonData['home_date'] if 'home_date' in reqJsonData else ""
+        track_name = reqJsonData['track_name'] if 'track_name' in reqJsonData else ""
+        raceNum = reqJsonData['raceNum'] if 'raceNum' in reqJsonData else ""
+        statisticalWeightValues = reqJsonData['statisticalWeightValues'] if 'statisticalWeightValues' in reqJsonData else ""
+        return boardController.updateStatisticalWeight (home_date, track_name, raceNum, statisticalWeightValues)
+    
+

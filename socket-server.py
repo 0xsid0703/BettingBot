@@ -3,7 +3,7 @@ import websockets
 import json
 import argparse
 import os
-
+from datetime import datetime
 from controllers.boardController import BoardController
 
 boardController = BoardController()
@@ -19,8 +19,10 @@ async def handler(websocket, path):
         
         if startDate is not None and venue is not None and raceNum is not None and marketId is not None:
             while True:
+                print (datetime.now().timestamp(), "================>")
                 raceCard = boardController.getRaceCardByNum (startDate, venue, raceNum, None, marketId)
                 raceForm = boardController.getRaceFormByNum (startDate, venue, raceNum, None, marketId)
+                print (datetime.now().timestamp(), "================%")
                 await websocket.send (json.dumps({"raceCard": raceCard, "raceForm": raceForm}))
                 await asyncio.sleep(3)
     except Exception as e:

@@ -14,10 +14,11 @@ class Event(ColManager):
     def saveList(self, dList):
         for d in dList:
             markets = d['markets']
+            if markets is None or len(markets) == 0: return
             markets.sort (key=self.sortFuncMarketStartTime)
             lastMarket = markets[-1]
             if lastMarket['marketStartTime'] > datetime.now():
-                if lastMarket['marketBook']['status'] == 'CLOSED': continue
+                if lastMarket['marketBook']['status'] == 'CLOSED': continue    
 
             eventCount = self.manager.count_documents ({"eventId": d["eventId"]})
             if (eventCount > 0):
@@ -26,7 +27,6 @@ class Event(ColManager):
                 if len(d['timeZone']) > 0: updateObj['timeZone'] = d['timeZone']
                 if d['openDate'] is not None: updateObj['openDate'] = d['openDate']
                 if len(d['countryCode']) > 0: updateObj['countryCode'] = d['countryCode']
-                
                 eventDocument = self.manager.find_one ({"eventId": d["eventId"]})
                 updateMarkets = d['markets']
                 addMarkets = []
@@ -39,6 +39,7 @@ class Event(ColManager):
                     if flg == False: addMarkets.append (market)
                 
                 updateObj['markets'] = updateMarkets + addMarkets
+                # updateObj['markets'] = updateMarkets
                 self.manager.update_one(
                     {"eventId": d['eventId']},
                     {"$set": updateObj}
@@ -92,6 +93,11 @@ class Event(ColManager):
     def getDocumentsByMarketId(self, market_id):
         events = self.manager.find({"markets.marketId": market_id})
         return list(events)
+    
+    def getDocumentsByEventId(self, eventId):
+        print("=====================================")
+        event = self.manager.find_one({"eventId": eventId})
+        return event
     
     def getTotalMatchedByNum(self, dateObj, trackName, raceNum = 1):
         # event = self.manager.find_one ({"eventVenue": trackName, "markets.marketStartTime": dateObj }, {"markets.totalMatched": 1, "markets.marketStartTime": 1, "markets.marketCatalogueDescription.marketType": 1})

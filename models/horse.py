@@ -16,23 +16,23 @@ class Horse(ColManager):
         try:
             horse_count = self.manager.count_documents ({"id": race_obj['horse_id']})
             if horse_count > 0:
-                horses = self.manager.count_documents ({"id": race_obj['horse_id'], "races.event_id": race_obj['event_id'], "races.race_num": race_obj['race_num']})
+                # horses = self.manager.count_documents ({"id": race_obj['horse_id'], "races.event_id": race_obj['event_id'], "races.race_num": race_obj['race_num']})
 
-                if horses > 0:
-                    return
+                # if horses > 0:
+                #     return
 
-                horses = list(self.manager.find ({"id": race_obj['horse_id']}))
-                races = horses[0]['races']
-                races.append (race_obj)
+                # horses = list(self.manager.find ({"id": race_obj['horse_id']}))
+                # races = horses[0]['races']
+                # races.append (race_obj)
                 self.manager.update_one(
                     {"id": race_obj['horse_id']},
-                    {"$set": {"id": race_obj['horse_id'], "name": race_obj['horse_name'], "races": races}}
+                    {"$set": {"id": race_obj['horse_id'], "name": race_obj['horse_name'], "races": race_obj['horseRaces']}}
                 )
             else:
                 self.manager.insert_one ({
                     "id": race_obj['horse_id'],
                     "name": race_obj['horse_name'],
-                    "races": [race_obj]
+                    "races": race_obj['horseRaces']
                 })
         except:
             horseLogger.error ("saveHorse() failed.", exc_info=True)

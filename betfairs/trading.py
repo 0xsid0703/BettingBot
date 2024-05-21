@@ -140,9 +140,10 @@ class Trading:
             mf = self.makeMarketFilter(
                     marketCountries=countryList,
                     eventTypeIds=eventTypeIds,
-                    # marketTypeCodes=['WIN']
+                    # marketTypeCodes=['WIN', 'AVB', 'TOP_2_FINISH']
                 )
-            events = self.trading.betting.list_events(filter=mf)
+            events = self.trading.betting.list_events(filter=mf)         
+            
             rlt = []
             for eventObject in events:
                 event = {
@@ -157,11 +158,16 @@ class Trading:
                     'markets': []
                 }
 
+                # print("===>>>=market_status=",eventObject.event['status'])
+            
+                # if(eventObject.event.market.status)
+
                 martketCatalogues = self.getListMarketCatalog (eventObject.market_count, [event['eventId']])
                 event['markets'] = martketCatalogues
+                # eventid = int(eventObject.event.id)
+                # print("==>>>=eventid=",eventid , "==>>>=venue=",eventObject.event.venue,"==>>>>=opendate=",eventObject.event.open_date)
 
                 rlt.append (event)
-            
             return rlt
         except Exception as e:
             tradingLogger.error ("getEvents() failed.", exc_info=True)
@@ -195,7 +201,7 @@ class Trading:
                     rlt.append (tmp)
             return rlt
         except Exception as e:
-            tradingLogger.error ("getMarketProfitAndLoss() called failed.", exc_info=True)
+            tradingLogger.error ("getMarketProfitAndLoss() called failed.", exc_info=True) 
             return None
 
     def getMarketBooks (self, marketIds):
