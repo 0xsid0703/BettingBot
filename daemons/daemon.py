@@ -140,7 +140,7 @@ def main():
                         # evt = threading.Event()
                         # saveEvent = threading.Thread(target=daemonSaveEvent, args=(15,evt))
                         saveEvent.start ()
-                        time.sleep (900)
+                        time.sleep (10)
                         os.kill (saveEvent.pid, 15)
                         print ("#######")
                         time.sleep (30)

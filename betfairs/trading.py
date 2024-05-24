@@ -171,6 +171,7 @@ class Trading:
             return rlt
         except Exception as e:
             tradingLogger.error ("getEvents() failed.", exc_info=True)
+            print("Trading failed")
             return []
 
     def getMarketProfitAndLoss(self, marketIds, includeBspBets = 'true', includeSettledBets = 'true'):
