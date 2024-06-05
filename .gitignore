@@ -20,3 +20,10 @@ data/mr_form/*.xml
 test.py
 test.json
 */*/*.xml
+
+feed-pid
+fetch-pid
+manage-pid
+server-pid
+socket-pid
+stream-pid
